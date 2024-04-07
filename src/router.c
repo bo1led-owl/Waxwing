@@ -7,7 +7,7 @@ enum {
 };
 
 static void default_not_found_handler(http_context_t* ctx) {
-    ctx_respond(ctx, STATUS_NOT_FOUND, CONTENT_NONE, str_from_cstr(""));
+    ctx_respond_status(ctx, STATUS_NOT_FOUND);
 }
 
 void router_init(http_router_t* router, http_req_handler_t not_found_handler) {

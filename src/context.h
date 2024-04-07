@@ -1,5 +1,6 @@
 #pragma once
 
+#include "headers.h"
 #include "str.h"
 #include "vector.h"
 
@@ -10,7 +11,6 @@ typedef enum http_method {
 } http_method_t;
 
 typedef enum http_content_type {
-    CONTENT_NONE,
     CONTENT_TEXT,
     CONTENT_HTML,
     CONTENT_JSON,
@@ -28,10 +28,6 @@ typedef enum http_status_code {
     STATUS_INTERNAL_SERVER_ERROR = 500,
 } http_status_code_t;
 
-typedef struct http_headers {
-    vector_t* buckets;
-} http_headers_t;
-
 typedef struct http_request {
     http_method_t method;
     str_t target;
@@ -40,7 +36,7 @@ typedef struct http_request {
 } http_request_t;
 
 typedef struct http_response_writer {
-    http_headers_t* headers;
+    vector_t headers;
     i32 conn_fd;
 } http_response_writer_t;
 
@@ -54,12 +50,11 @@ bool parse_request(const str_t input, http_request_t* result);
 void print_method(const enum http_method method);
 void print_req(const http_request_t* req);
 
-void headers_init(http_headers_t* headers);
-void headers_clear(http_headers_t* headers);
-void headers_free(http_headers_t* headers);
-bool headers_set(http_headers_t* headers, const str_t key, const str_t value);
-str_t* headers_get(const http_headers_t* headers, const str_t key);
-
 str_t load_html(const char* path);
-void ctx_respond(http_context_t* ctx, const http_status_code_t status,
-                 const http_content_type_t content_type, const str_t body);
+str_t* ctx_get_request_header(const http_context_t* ctx, const str_t key);
+void ctx_set_response_header(http_context_t* ctx, const str_t key,
+                             const str_t value);
+void ctx_respond_status(http_context_t* ctx, const http_status_code_t status);
+void ctx_respond_msg(http_context_t* ctx, const http_status_code_t status,
+                     const http_content_type_t content_type, const str_t body);
+void ctx_free(http_context_t* ctx);

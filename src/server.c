@@ -20,10 +20,6 @@ void server_loop(http_server_t* server) {
 
     http_context_t ctx = (http_context_t){0};
 
-    http_headers_t response_headers;
-    headers_init(&response_headers);
-    headers_init(&ctx.req.headers);
-
     // TODO: exit condition?
     struct sockaddr_in clientaddr;
     socklen_t clientaddr_len = sizeof(clientaddr);
@@ -35,15 +31,17 @@ void server_loop(http_server_t* server) {
             perror("Error accepting connection");
             continue;
         }
+
         buf.len = recv(ctx.writer.conn_fd, buf.data,
                        HEADERS_BUFFER_SIZE * sizeof(char), 0);
 
+        ctx.req = (http_request_t){0};
         if (!parse_request(buf, &ctx.req)) {
             fprintf(stderr, "Error parsing request\n");
         }
+
         print_req(&ctx.req);
 
-        ctx.writer.headers = &response_headers;
         const http_req_handler_t handler =
             router_get_route(server->router, ctx.req.method, ctx.req.target);
         if (handler != nullptr) {
@@ -52,12 +50,12 @@ void server_loop(http_server_t* server) {
             server->router->not_found_handler(&ctx);
         }
 
-        headers_clear(&response_headers);
+        vector_free(&ctx.writer.headers);
         headers_clear(&ctx.req.headers);
         close(ctx.writer.conn_fd);
     }
 
-    headers_free(&response_headers);
+    ctx_free(&ctx);
     free(buf.data);
 }
 

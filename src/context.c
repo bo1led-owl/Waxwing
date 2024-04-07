@@ -8,11 +8,6 @@ enum {
     HEADERS_BUCKETS_COUNT = 64,
 };
 
-typedef struct http_header {
-    str_t key;
-    str_t value;
-} http_header_t;
-
 static str_t format_content_type(const http_content_type_t type) {
     switch (type) {
         case CONTENT_TEXT:
@@ -98,7 +93,7 @@ http_header_t parse_header(const str_t input) {
 }
 
 bool parse_request(const str_t req, http_request_t* result) {
-    str_split_iter_t line_iter = str_split(req, str_from_cstr("\n"));
+    str_split_iter_t line_iter = str_split(req, str_from_cstr("\r\n"));
 
     // request line
     const str_t request_line = split_next(&line_iter);
@@ -117,7 +112,7 @@ bool parse_request(const str_t req, http_request_t* result) {
     }
 
     split_for_each(line_iter, line) {
-        if (str_compare(line, str_from_cstr("\r")) == 0) {
+        if (line.len == 0) {
             break;
         }
         const http_header_t header = parse_header(line);
@@ -126,54 +121,6 @@ bool parse_request(const str_t req, http_request_t* result) {
 
     result->body = str_trim(line_iter.source);
     return true;
-}
-
-void headers_init(http_headers_t* headers) {
-    *headers = (http_headers_t){
-        .buckets = calloc(HEADERS_BUCKETS_COUNT, sizeof(vector_t))};
-}
-
-void headers_clear(http_headers_t* headers) {
-    if (!headers)
-        return;
-
-    for (usize i = 0; i < HEADERS_BUCKETS_COUNT; ++i) {
-        vector_free(&headers->buckets[i]);
-    }
-}
-
-void headers_free(http_headers_t* headers) {
-    headers_clear(headers);
-    free(headers->buckets);
-}
-
-bool headers_set(http_headers_t* headers, const str_t key, const str_t value) {
-    const u64 hash = str_hash(key) % HEADERS_BUCKETS_COUNT;
-    for (usize i = 0; i < headers->buckets[hash].size; ++i) {
-        const http_header_t* cur_header =
-            (http_header_t*)headers->buckets[hash].items + i;
-        if (str_compare(cur_header->key, key) == 0) {
-            return true;
-        }
-    }
-
-    // didn't find the route in the loop above, inserting
-    const http_header_t header = (http_header_t){.key = key, .value = value};
-    vector_push(&headers->buckets[hash], sizeof(http_header_t), &header, 1);
-    return false;
-}
-
-str_t* headers_get(const http_headers_t* headers, const str_t key) {
-    const u64 hash = str_hash(key) % HEADERS_BUCKETS_COUNT;
-    for (usize i = 0; i < headers->buckets[hash].size; ++i) {
-        http_header_t* cur_header =
-            (http_header_t*)headers->buckets[hash].items + i;
-        if (str_compare(cur_header->key, key) == 0) {
-            return &cur_header->value;
-        }
-    }
-
-    return nullptr;
 }
 
 str_t load_html(const char* path) {
@@ -195,51 +142,77 @@ str_t load_html(const char* path) {
 }
 
 static void concat_header(dynamic_str_t* buf, const http_header_t* header) {
-    string_concat(buf, header->key);
+    string_concat(buf, str_trim(header->key));
     string_concat(buf, str_from_cstr(": "));
+    string_concat(buf, str_trim(header->value));
 
-    string_concat(buf, header->value);  // ?
-
-    string_push(buf, '\n');
+    string_concat(buf, str_from_cstr("\r\n"));
 }
 
-static void concat_headers(dynamic_str_t* buf, const http_headers_t* headers) {
-    // TODO: better way of iterating over headers? (proposal: store headers
-    // in a single vector and store indices into that vector in the hashmap)
-    for (usize i = 0; i < HEADERS_BUCKETS_COUNT; ++i) {
-        for (usize j = 0; j < headers->buckets[i].size; ++j) {
-            concat_header(buf, (http_header_t*)headers->buckets[i].items + j);
-        }
+static void concat_headers(dynamic_str_t* buf, const vector_t* headers) {
+    for (usize i = 0; i < headers->size; ++i) {
+        concat_header(buf, (http_header_t*)headers->items + i);
     }
 }
 
-void ctx_respond(http_context_t* ctx, const http_status_code_t status,
-                 const http_content_type_t content_type, const str_t body) {
+str_t* ctx_get_request_header(http_context_t* ctx, const str_t key) {
+    return headers_get(&ctx->req.headers, key);
+}
+
+void ctx_set_response_header(http_context_t* ctx, const str_t key,
+                             const str_t value) {
+    http_header_t header = {.key = str_trim(key), .value = str_trim(value)};
+    vector_push(&ctx->writer.headers, sizeof(header), &header, 1);
+}
+
+void ctx_respond_status(http_context_t* ctx, const http_status_code_t status) {
+    dynamic_str_t buf = (dynamic_str_t){0};
+
+    string_concat(&buf, str_from_cstr("HTTP/1.1 "));
+    string_concat(&buf, format_status_code(status));
+    string_concat(&buf, str_from_cstr("\r\n"));
+
+    ctx_set_response_header(ctx, str_from_cstr("Connection"),
+                            str_from_cstr("Close"));
+
+    // push all of the headers into buf
+    concat_headers(&buf, &ctx->writer.headers);
+
+    string_concat(&buf, str_from_cstr("\r\n"));
+
+    send(ctx->writer.conn_fd, buf.data, buf.size, 0);
+    string_free(&buf);
+}
+
+void ctx_respond_msg(http_context_t* ctx, const http_status_code_t status,
+                     const http_content_type_t content_type, const str_t body) {
     dynamic_str_t buf = (dynamic_str_t){0};
     char length_buf[16];
 
     string_concat(&buf, str_from_cstr("HTTP/1.1 "));
     string_concat(&buf, format_status_code(status));
-    string_push(&buf, '\n');
+    string_concat(&buf, str_from_cstr("\r\n"));
 
-    headers_set(ctx->writer.headers, str_from_cstr("Connection"),
-                str_from_cstr("Close"));
+    ctx_set_response_header(ctx, str_from_cstr("Connection"),
+                            str_from_cstr("Close"));
 
-    // content specification headers, skipped if the body is empty
-    if (content_type != CONTENT_NONE || body.len == 0) {
-        sprintf(length_buf, "%lu", body.len);
-        headers_set(ctx->writer.headers, str_from_cstr("Content-Length"),
-                    str_from_cstr(length_buf));
-        headers_set(ctx->writer.headers, str_from_cstr("Content-Type"),
-                    format_content_type(content_type));
-    }
+    sprintf(length_buf, "%lu", body.len);
+    ctx_set_response_header(ctx, str_from_cstr("Content-Length"),
+                            str_from_cstr(length_buf));
+    ctx_set_response_header(ctx, str_from_cstr("Content-Type"),
+                            format_content_type(content_type));
 
     // push all of the headers into buf
-    concat_headers(&buf, ctx->writer.headers);
+    concat_headers(&buf, &ctx->writer.headers);
 
-    string_push(&buf, '\n');
+    string_concat(&buf, str_from_cstr("\r\n"));
     string_concat(&buf, body);
 
     send(ctx->writer.conn_fd, buf.data, buf.size, 0);
     string_free(&buf);
+}
+
+void ctx_free(http_context_t* ctx) {
+    headers_free(&ctx->req.headers);
+    *ctx = (http_context_t){0};
 }
