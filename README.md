@@ -1,5 +1,5 @@
 # Server
-The main of the project is to create a simple HTTP server in C, but make the API as good as possible
+The main goal of the project is to create a simple HTTP server in C with easy to use API
 
 ## Building and running
 The `Makefile` is configured to have four options:
