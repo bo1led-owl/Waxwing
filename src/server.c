@@ -15,6 +15,94 @@ enum {
     MAX_CONNECTIONS = 8,
 };
 
+static void print_method(http_method_t method) {
+    switch (method) {
+        case METHOD_UNKNOWN:
+            printf("UNKNOWN");
+            break;
+        case METHOD_GET:
+            printf("GET");
+            break;
+        case METHOD_POST:
+            printf("POST");
+            break;
+    }
+}
+
+static void print_req(const http_request_t* req) {
+    print_method(req->method);
+    putchar(' ');
+    str_print(req->target);
+    // putchar(' ');
+    // str_print(req->version);
+    putchar('\n');
+}
+
+static http_method_t parse_method(const str_t method) {
+    if (str_compare(method, str_from_cstr("GET")) == 0) {
+        return METHOD_GET;
+    }
+    if (str_compare(method, str_from_cstr("POST")) == 0) {
+        return METHOD_POST;
+    }
+    return METHOD_UNKNOWN;
+}
+
+static str_pair_t parse_header(const str_t input) {
+    usize colon_pos = 0;
+    for (; colon_pos < input.len; ++colon_pos) {
+        if (input.data[colon_pos] == ':')
+            break;
+    }
+
+    return (str_pair_t){
+        .key = str_trim((str_t){.data = input.data, .len = colon_pos}),
+        .value = str_trim((str_t){.data = input.data + colon_pos + 1,
+                                  .len = input.len - colon_pos - 1})};
+}
+
+static bool parse_request(const str_t req, http_request_t* result) {
+    str_split_iter_t line_iter = str_split(req, str_from_cstr("\r\n"));
+
+    // request line
+    const str_t request_line = split_next(&line_iter);
+    if (request_line.data == nullptr) {
+        return false;
+    }
+
+    str_split_iter_t token_iter = str_split(request_line, str_from_cstr(" "));
+
+    result->method = parse_method(split_next(&token_iter));
+    result->target = split_next(&token_iter);
+
+    if (result->method == METHOD_UNKNOWN || !result->target.data ||
+        !split_next(&token_iter).data) {
+        return false;
+    }
+
+    split_for_each(line_iter, line) {
+        if (line.len == 0) {
+            break;
+        }
+        const str_pair_t header = parse_header(line);
+        str_hashmap_insert(&result->headers, header.key, header.value);
+    }
+
+    result->body = str_trim(line_iter.source);
+    return true;
+}
+
+void add_route(http_server_t* server, const http_method_t method,
+               const char* target, const http_req_handler_t handler) {
+    router_add_route(&server->router, method, target, handler);
+}
+
+static void ctx_free(http_context_t* ctx) {
+    str_hashmap_free(&ctx->req.headers);
+    str_hashmap_free(&ctx->req.params);
+    *ctx = (http_context_t){0};
+}
+
 void server_loop(http_server_t* server) {
     str_t buf = (str_t){.data = malloc(HEADERS_BUFFER_SIZE * sizeof(char))};
 
@@ -35,23 +123,25 @@ void server_loop(http_server_t* server) {
         buf.len = recv(ctx.writer.conn_fd, buf.data,
                        HEADERS_BUFFER_SIZE * sizeof(char), 0);
 
-        ctx.req = (http_request_t){0};
+        ctx.req = (http_request_t){.headers = ctx.req.headers,
+                                   .params = ctx.req.params};
         if (!parse_request(buf, &ctx.req)) {
             fprintf(stderr, "Error parsing request\n");
         }
 
         print_req(&ctx.req);
 
-        const http_req_handler_t handler =
-            router_get_route(server->router, ctx.req.method, ctx.req.target);
+        const http_req_handler_t handler = router_get_route(
+            &server->router, ctx.req.method, ctx.req.target, &ctx.req.params);
         if (handler != nullptr) {
             handler(&ctx);
         } else {
-            server->router->not_found_handler(&ctx);
+            server->router.not_found_handler(&ctx);
         }
 
         vector_free(&ctx.writer.headers);
-        headers_clear(&ctx.req.headers);
+        str_hashmap_clear(&ctx.req.headers);
+        str_hashmap_clear(&ctx.req.params);
         close(ctx.writer.conn_fd);
     }
 
@@ -59,8 +149,12 @@ void server_loop(http_server_t* server) {
     free(buf.data);
 }
 
-bool server_init(http_server_t* server, http_router_t* router, const i32 port) {
-    server->router = router;
+bool server_init(http_server_t* server, const i32 port) {
+    if (!server)
+        return false;
+
+    router_init(&server->router, nullptr);
+
     server->sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server->sock_fd == -1) {
         perror("Error creating socket");
@@ -91,6 +185,6 @@ bool server_init(http_server_t* server, http_router_t* router, const i32 port) {
 }
 
 void server_free(http_server_t* server) {
-    router_free(server->router);
+    router_free(&server->router);
     close(server->sock_fd);
 }

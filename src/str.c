@@ -69,6 +69,8 @@ u64 str_hash(const str_t s) {
 }
 
 void str_print(const str_t s) {
+    if (!s.data)
+        return;
     fwrite(s.data, sizeof(char), s.len, stdout);
 }
 

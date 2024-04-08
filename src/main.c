@@ -1,12 +1,10 @@
 #include <stdlib.h>
 
-#include "router.h"
 #include "server.h"
 #include "types.h"
 
-void greet(const http_context_t* ctx, dynamic_str_t* buf) {
+void greet(const str_t* name, dynamic_str_t* buf) {
     string_concat(buf, str_from_cstr("Hello, "));
-    const str_t* name = ctx_get_request_header(ctx, str_from_cstr("Name"));
     if (name) {
         string_concat(buf, *name);
     } else {
@@ -18,7 +16,8 @@ void greet(const http_context_t* ctx, dynamic_str_t* buf) {
 void hello(http_context_t* ctx) {
     dynamic_str_t response = (dynamic_str_t){0};
 
-    greet(ctx, &response);
+    const str_t* name = ctx_get_request_header(ctx, str_from_cstr("Name"));
+    greet(name, &response);
     string_concat(&response, str_from_cstr("You are dead silent"));
 
     ctx_respond_msg(ctx, STATUS_OK, CONTENT_TEXT, str_from_string(&response));
@@ -28,7 +27,8 @@ void hello(http_context_t* ctx) {
 void hello_post(http_context_t* ctx) {
     dynamic_str_t response = (dynamic_str_t){0};
 
-    greet(ctx, &response);
+    const str_t* name = ctx_get_request_header(ctx, str_from_cstr("Name"));
+    greet(name, &response);
 
     string_concat(&response, str_from_cstr("I heard you say `"));
     string_concat(&response, ctx->req.body);
@@ -38,20 +38,36 @@ void hello_post(http_context_t* ctx) {
     string_free(&response);
 }
 
+void foo(http_context_t* ctx) {
+    ctx_respond_empty(ctx, STATUS_I_AM_A_TEAPOT);
+}
+
+void path_parameters(http_context_t* ctx) {
+    dynamic_str_t response = (dynamic_str_t){0};
+    const str_t name = *ctx_get_parameter(ctx, str_from_cstr("name"));
+    const str_t action = *ctx_get_parameter(ctx, str_from_cstr("action"));
+
+    string_concat(&response, name);
+    string_concat(&response, str_from_cstr(" is "));
+    string_concat(&response, action);
+    ctx_respond_msg(ctx, STATUS_OK, CONTENT_TEXT, str_from_string(&response));
+    string_free(&response);
+}
+
 i32 main() {
-    http_router_t r;
-    router_init(&r, nullptr);
-
-    router_add_route(&r, METHOD_GET, "/hello", hello);
-    router_add_route(&r, METHOD_POST, "/hello", hello_post);
-
     http_server_t s;
-    if (!server_init(&s, &r, 8122)) {
+    if (!server_init(&s, 8122)) {
         server_free(&s);
         return EXIT_FAILURE;
     }
 
+    add_route(&s, METHOD_GET, "/hello/:name", hello);
+    add_route(&s, METHOD_POST, "/hello", hello_post);
+    add_route(&s, METHOD_GET, "/foo", foo);
+    add_route(&s, METHOD_GET, "/user/:name/*action", path_parameters);
+
     server_loop(&s);
+
     server_free(&s);
     return EXIT_SUCCESS;
 }
