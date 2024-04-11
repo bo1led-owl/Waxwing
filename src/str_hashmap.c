@@ -33,19 +33,19 @@ static usize probe(const usize i, const usize bucket_count) {
     return (i + 1) % bucket_count;
 }
 
-static bool insert(str_pair_t* data, bool* metadata, const usize bucket_count,
-                   const str_pair_t* item) {
+static str_t* insert(str_pair_t* data, bool* metadata, const usize bucket_count,
+                     const str_pair_t* item) {
     const u64 hash = str_hash(item->key) % bucket_count;
 
     for (usize i = hash;; i = probe(i, bucket_count)) {
         if (!metadata[i]) {
             metadata[i] = true;
             memcpy(data + i, item, sizeof(str_pair_t));
-            return false;
+            return nullptr;
         }
 
         if (str_compare(data[i].key, item->key) == 0) {
-            return true;
+            return &data[i].value;
         }
     }
 }
@@ -99,16 +99,31 @@ bool str_hashmap_insert(str_hashmap_t* map, const str_t key,
     resize_if_needed(map);
 
     const str_pair_t entry = {.key = key, .value = value};
-    const bool result =
-        insert(map->data, map->metadata, map->bucket_count, &entry);
+    str_t* result = insert(map->data, map->metadata, map->bucket_count, &entry);
 
     if (!result)
         map->size += 1;
 
-    return result;
+    // evaluates to `true` if the value was present
+    return result != nullptr;
+}
+
+void str_hashmap_insert_or_replace(str_hashmap_t* map, const str_t key,
+                                   const str_t value) {
+    resize_if_needed(map);
+
+    const str_pair_t entry = {.key = key, .value = value};
+    str_t* result = insert(map->data, map->metadata, map->bucket_count, &entry);
+
+    if (result) {
+        *result = value;
+    }
 }
 
 str_t const* str_hashmap_get(const str_hashmap_t* map, const str_t key) {
+    if (map->bucket_count == 0)
+        return nullptr;
+
     const u64 hash = str_hash(key) % map->bucket_count;
 
     for (usize i = hash;; i = probe(i, map->bucket_count)) {

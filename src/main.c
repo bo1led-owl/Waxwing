@@ -42,7 +42,17 @@ void foo(http_context_t* ctx) {
     ctx_respond_empty(ctx, STATUS_I_AM_A_TEAPOT);
 }
 
-void path_parameters(http_context_t* ctx) {
+void name(http_context_t* ctx) {
+    dynamic_str_t response = (dynamic_str_t){0};
+    const str_t name = *ctx_get_parameter(ctx, str_from_cstr("name"));
+
+    string_concat(&response, str_from_cstr("hi "));
+    string_concat(&response, name);
+    ctx_respond_msg(ctx, STATUS_OK, CONTENT_TEXT, str_from_string(&response));
+    string_free(&response);
+}
+
+void name_action(http_context_t* ctx) {
     dynamic_str_t response = (dynamic_str_t){0};
     const str_t name = *ctx_get_parameter(ctx, str_from_cstr("name"));
     const str_t action = *ctx_get_parameter(ctx, str_from_cstr("action"));
@@ -61,10 +71,13 @@ i32 main() {
         return EXIT_FAILURE;
     }
 
-    add_route(&s, METHOD_GET, "/hello/:name", hello);
+    add_route(&s, METHOD_GET, "/hello", hello);
     add_route(&s, METHOD_POST, "/hello", hello_post);
     add_route(&s, METHOD_GET, "/foo", foo);
-    add_route(&s, METHOD_GET, "/user/:name/*action", path_parameters);
+    add_route(&s, METHOD_GET, "/user/:name/*action", name_action);
+    add_route(&s, METHOD_GET, "/user/:name", name);
+
+    router_print_tree(&s.router);
 
     server_loop(&s);
 

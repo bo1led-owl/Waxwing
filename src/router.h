@@ -34,3 +34,5 @@ bool router_add_route(http_router_t* router, const enum http_method method,
 http_req_handler_t router_get_route(const http_router_t* router,
                                     const http_method_t method,
                                     const str_t target, str_hashmap_t* params);
+
+void router_print_tree(const http_router_t* r);

@@ -13,10 +13,14 @@ typedef struct http_server {
 
 /*
 Map function `handler` to the request with `method` on path `target`. Path is
-expected to be a static string.
+expected to be a static string. Path parameters are allowed and can be accessed
+by handler via given context. When resolving path parameters, priorities
+are: `literal` > `:param` > `*param`
 */
 void add_route(http_server_t* server, const http_method_t method,
                const char* target, const http_req_handler_t handler);
+
+void set_404_handler(http_server_t* server, const http_req_handler_t handler);
 
 /*
 Initialize a server.

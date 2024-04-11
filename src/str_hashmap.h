@@ -32,6 +32,13 @@ present
 bool str_hashmap_insert(str_hashmap_t* map, const str_t key, const str_t value);
 
 /*
+Insert a key-value pair into the hashmap, or replace the value if the key was
+already present
+*/
+void str_hashmap_insert_or_replace(str_hashmap_t* map, const str_t key,
+                                   const str_t value);
+
+/*
 Get a const pointer to the value by key. Returns nullptr if the key is not
 present
 */

@@ -35,6 +35,18 @@ i32 str_compare(const str_t a, const str_t b) {
     }
 }
 
+void str_to_lower(str_t s) {
+    for (usize i = 0; i < s.len; ++i) {
+        s.data[i] = tolower(s.data[i]);
+    }
+}
+
+void str_to_upper(str_t s) {
+    for (usize i = 0; i < s.len; ++i) {
+        s.data[i] = toupper(s.data[i]);
+    }
+}
+
 str_t str_trim(const str_t s) {
     if (!s.data) {
         return (str_t){0};

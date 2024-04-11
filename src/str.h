@@ -24,6 +24,16 @@ if `a` == `b` and 1 if `a` > `b`
 i32 str_compare(const str_t a, const str_t b);
 
 /*
+Put all of the characters of the string to lower case IN-PLACE
+*/
+void str_to_lower(str_t s);
+
+/*
+Put all of the characters of the string to upper case IN-PLACE
+*/
+void str_to_upper(str_t s);
+
+/*
 Remove whitespace from both ends of the given string and return the result
 */
 str_t str_trim(const str_t s);

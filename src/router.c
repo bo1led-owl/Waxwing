@@ -1,5 +1,6 @@
 #include "router.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 typedef struct handler_entry {
@@ -35,6 +36,43 @@ static http_route_node_type_t node_get_type(const str_t key) {
     }
 }
 
+static void node_print(http_route_node_t* node, i32 layer) {
+    if (!node)
+        return;
+
+    for (i32 i = 0; i < layer * 2; ++i) {
+        putchar(' ');
+    }
+    if (node->key.len == 0) {
+        putchar('/');
+    } else {
+        str_print(node->key);
+    }
+    putchar(' ');
+    for (usize i = 0; i < node->handlers.size; ++i) {
+        switch (((handler_entry_t*)node->handlers.items)[i].method) {
+            case METHOD_UNKNOWN:
+                printf("UNKNOWN ");
+                break;
+            case METHOD_GET:
+                printf("GET ");
+                break;
+            case METHOD_POST:
+                printf("POST ");
+                break;
+        }
+    }
+    putchar('\n');
+
+    for (usize i = 0; i < node->children.size; ++i) {
+        node_print(((http_route_node_t**)node->children.items)[i], layer + 1);
+    }
+}
+
+void router_print_tree(const http_router_t* r) {
+    node_print(r->root, 0);
+}
+
 static void node_free(http_route_node_t* node) {
     if (!node)
         return;
@@ -45,6 +83,7 @@ static void node_free(http_route_node_t* node) {
         node_free(((http_route_node_t**)node->children.items)[i]);
     }
 }
+
 void router_free(http_router_t* router) {
     if (!router)
         return;
@@ -110,6 +149,10 @@ bool router_add_route(http_router_t* router, const http_method_t method,
 
     split_next(&path_iter);  // skip first, empty part of the path
     split_for_each(path_iter, path_component) {
+        const http_route_node_type_t component_type =
+            node_get_type(path_component);
+        path_component = node_strip_key(path_component);
+
         http_route_node_t** children = cur_node->children.items;
         for (usize i = 0; i < cur_node->children.size; ++i) {
             if (str_compare(children[i]->key, path_component) == 0) {
@@ -120,8 +163,7 @@ bool router_add_route(http_router_t* router, const http_method_t method,
         }
 
         // didn't found a node in the loop above, have to insert it
-        const http_route_node_type_t node_type = node_get_type(path_component);
-        node_insert_child(cur_node, path_component, node_type);
+        node_insert_child(cur_node, path_component, component_type);
         cur_node = ((http_route_node_t**)
                         cur_node->children.items)[cur_node->children.size - 1];
 
@@ -168,6 +210,8 @@ http_req_handler_t router_get_route(const http_router_t* router,
         if (parameter_node != nullptr) {
             str_hashmap_insert(params, parameter_node->key, path_component);
             cur_node = parameter_node;
+        } else {
+            return nullptr;
         }
 
     found_literal:

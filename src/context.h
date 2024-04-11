@@ -2,7 +2,6 @@
 
 #include "str.h"
 #include "str_hashmap.h"
-#include "vector.h"
 
 typedef enum http_method {
     METHOD_UNKNOWN,
@@ -38,7 +37,7 @@ typedef struct http_request {
 } http_request_t;
 
 typedef struct http_response_writer {
-    vector_t headers;
+    str_hashmap_t headers;
     i32 conn_fd;
 } http_response_writer_t;
 
@@ -52,7 +51,7 @@ Load an HTML page from file on `path`. Returns a `str` with pointer to a
 dynamically allocated memory with contents of the file. If loading
 failed, pointer is set to null.
 */
-str_t load_html(const char* path);
+dynamic_str_t load_html(const char* path);
 
 /*
 Get a const pointer to value of the header by its key. Returns null pointer
