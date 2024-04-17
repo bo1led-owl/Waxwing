@@ -1,0 +1,37 @@
+#include "str_util.hh"
+
+#include <ranges>
+
+namespace http {
+namespace str_util {
+size_t length(const std::string_view s) {
+    return s.size();
+}
+
+size_t length(const char) {
+    return 1;
+}
+
+std::string_view ltrim(const std::string_view s) {
+    const auto first_non_whitespace =
+        std::ranges::find_if(s, [](const char c) { return !std::isspace(c); });
+    return s.substr(first_non_whitespace - s.cbegin());
+}
+
+std::string_view rtrim(const std::string_view& s) {
+    const auto first_non_whitespace = std::ranges::find_if(
+        s | std::views::reverse, [](const char c) { return !std::isspace(c); });
+    return s.substr(0, first_non_whitespace - s.crend() - 1);
+}
+
+std::string_view trim(const std::string_view s) {
+    return rtrim(ltrim(s));
+}
+
+std::string to_lower(const std::string_view s) {
+    std::string res{s};
+    std::for_each(res.begin(), res.end(), [](char& c) { c = std::tolower(c); });
+    return res;
+}
+}  // namespace str_util
+}  // namespace http

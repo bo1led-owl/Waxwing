@@ -1,7 +1,19 @@
-project('sandbox', 'c', default_options : [
+project('sandbox', 'cpp', default_options : [
+  'cpp_std=c++23',
+  'cpp_eh=none',
   'c_std=c2x',
   'warning_level=3',
 ])
 
-src = ['src/main.c', 'src/str.c', 'src/context.c', 'src/str_hashmap.c', 'src/router.c', 'src/server.c', 'src/vector.c']
-executable('main', src)
+fmt_dep = dependency('fmt')
+
+src = [
+   'src/main.cc',
+   'src/server.cc',
+   'src/str_util.cc',
+   'src/router.cc',
+   'src/response.cc',
+   'src/request.cc',
+   'src/file_descriptor.cc',
+ ]
+executable('main', src, dependencies: [fmt_dep], native: true)

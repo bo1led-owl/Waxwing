@@ -1,6 +1,7 @@
 BasedOnStyle: Google
 ColumnLimit: 80
 IndentWidth: 4
+AccessModifierOffset: -4
 AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortEnumsOnASingleLine: false
@@ -8,3 +9,4 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 DerivePointerAlignment: false
 PointerAlignment: Left
+InsertBraces: true

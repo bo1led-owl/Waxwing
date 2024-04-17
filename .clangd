@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [-xc, -std=c2x, -Wall, -Wextra, -Wpedantic, -Winvalid-pch]
+  Add: [-std=c++23, -Wall, -Wextra, -Wpedantic]
