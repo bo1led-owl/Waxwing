@@ -8,6 +8,7 @@ A simple HTTP server with easy to use API
 
 ## Building and running
 See https://mesonbuild.com/Quick-guide.html#compiling-a-meson-project
+
 Note: `fmt` dependency is used only for showcase purposes, removing it from `meson.build` is safe
 
 ## Code example
