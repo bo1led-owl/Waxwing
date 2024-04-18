@@ -1,7 +1,6 @@
 project('sandbox', 'cpp', default_options : [
-  'cpp_std=c++23',
+  'cpp_std=c++20',
   'cpp_eh=none',
-  'c_std=c2x',
   'warning_level=3',
 ])
 

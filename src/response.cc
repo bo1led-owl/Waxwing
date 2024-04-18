@@ -22,7 +22,7 @@ std::string_view format_content_type(const ContentType content_type) {
             return "application/javasript";
     }
 
-    std::unreachable();
+    __builtin_unreachable();
 }
 
 std::string_view format_status(const StatusCode code) {
@@ -150,7 +150,8 @@ std::string_view format_status(const StatusCode code) {
         case StatusCode::NetworkAuthenticationRequired:
             return "511 Network Authentication Required";
     }
-    std::unreachable();
+
+    __builtin_unreachable();
 }
 
 Response& Response::header(const std::string& key, const std::string& value) {

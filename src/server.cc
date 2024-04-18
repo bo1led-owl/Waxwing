@@ -8,6 +8,7 @@
 #include <expected>
 
 #include "file_descriptor.hh"
+#include "str_split.hh"
 #include "str_util.hh"
 
 namespace http {
@@ -50,37 +51,49 @@ std::optional<Request> read_request(const Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
-    str_util::SplitIterator line_iter = str_util::split(buf, "\r\n");
+    const auto line_split = str_util::split(buf, "\r\n");
+    auto line_iter = line_split.begin();
 
-    // request line
-    const std::optional<std::string_view> request_line = line_iter.next();
-    if (!request_line.has_value()) {
+    if (line_iter == line_split.end()) {
         return std::nullopt;
     }
 
-    str_util::SplitIterator token_iter =
-        str_util::split(request_line.value(), ' ');
+    const auto token_split = str_util::split(*line_iter, ' ');
+    auto token_iter = token_split.begin();
 
-    std::optional<Method> method = token_iter.next().and_then(
-        [](const std::string_view s) { return parse_method(s); });
+    std::optional<Method> method = std::nullopt;
+    if (token_iter != token_split.end()) {
+        method = parse_method(*token_iter);
+    }
+    token_iter++;
 
-    std::optional<std::string_view> target = token_iter.next();
+    std::optional<std::string_view> target = std::nullopt;
+    if (token_iter != token_split.end()) {
+        target = *token_iter;
+    }
+    token_iter++;
 
-    if (!method || !target || !token_iter.next()) {
+    std::optional<std::string_view> http_version = std::nullopt;
+    if (token_iter != token_split.end()) {
+        http_version = *token_iter;
+    }
+
+    if (!method || !target || !http_version) {
         return std::nullopt;
     }
 
     Headers headers;
 
-    line_iter.for_each([&headers, &line_iter](const std::string_view line) {
+    for (const std::string_view line :
+         std::ranges::subrange(line_iter, line_split.end())) {
         if (line.empty()) {
             // request body starts here, breaking
-            line_iter.finish();
+            break;
         }
         const std::pair<std::string, std::string> header = parse_header(line);
         headers.insert_or_assign(std::string{header.first},
                                  std::string{header.second});
-    });
+    };
 
     std::string body{line_iter.remaining()};
 

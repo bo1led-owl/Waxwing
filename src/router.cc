@@ -1,14 +1,16 @@
 #include "router.hh"
 
 #include <iostream>
+#include <ranges>
 
-#include "str_util.hh"
+#include "str_split.hh"
 
 namespace http {
 std::string_view Router::RouteNode::get_path_parameter_key(
     const std::string_view key) {
-    if (key.empty())
+    if (key.empty()) {
         return key;
+    }
 
     switch (key[0]) {
         case '*':
@@ -21,8 +23,9 @@ std::string_view Router::RouteNode::get_path_parameter_key(
 
 Router::RouteNode::Type Router::RouteNode::parse_type(
     const std::string_view s) {
-    if (s.empty())
+    if (s.empty()) {
         return Type::Literal;
+    }
 
     switch (s[0]) {
         case '*':
@@ -75,23 +78,27 @@ void Router::print_tree() const {
 void Router::add_route(const std::string_view target, const Method method,
                        const RequestHandler handler) {
     RouteNode* cur_node = root_.get();
-    str_util::SplitIterator iter = str_util::split(target, '/');
-    iter.next();
-    iter.for_each([&cur_node](std::string_view component) {
+    str_util::Split split = str_util::split(target, '/');
+    auto iter = split.begin();
+    ++iter;
+
+    for (std::string_view component :
+         std::ranges::subrange(iter, split.end())) {
         const RouteNode::Type type = RouteNode::parse_type(component);
         component = RouteNode::get_path_parameter_key(component);
 
         for (const auto& child : cur_node->children) {
             if (child->key == component && child->type == type) {
                 cur_node = child.get();
-                return;
+                goto skip;
             }
         }
 
         cur_node->children.emplace_back(
             std::make_unique<RouteNode>(type, component));
         cur_node = cur_node->children.back().get();
-    });
+    skip:;
+    };
 
     cur_node->handlers[method] = handler;
 }
@@ -100,13 +107,13 @@ std::pair<RequestHandler, Params> Router::route(const std::string_view target,
                                                 const Method method) const {
     Params params;
 
-    bool breaked = false;
-
     RouteNode const* cur_node = root_.get();
-    str_util::SplitIterator iter = str_util::split(target, '/');
-    iter.next();
-    iter.for_each([&cur_node, &params, &iter,
-                   &breaked](const std::string_view component) {
+    str_util::Split split = str_util::split(target, '/');
+    auto iter = split.begin();
+    ++iter;
+
+    for (std::string_view component :
+         std::ranges::subrange(iter, split.end())) {
         RouteNode const* parameter_node = nullptr;
 
         for (const auto& child : cur_node->children) {
@@ -119,7 +126,7 @@ std::pair<RequestHandler, Params> Router::route(const std::string_view target,
             } else if (child->type == RouteNode::Type::Literal &&
                        child->key == component) {
                 cur_node = child.get();
-                return;
+                goto found_literal;
             }
         }
 
@@ -128,14 +135,11 @@ std::pair<RequestHandler, Params> Router::route(const std::string_view target,
                 {std::string{parameter_node->key}, std::string{component}});
             cur_node = parameter_node;
         } else {
-            breaked = true;
-            iter.finish();
+            return {not_found_handler_, params};
         }
-    });
 
-    if (breaked) {
-        return {not_found_handler_, params};
-    }
+    found_literal:;
+    };
 
     const auto handler_it = cur_node->handlers.find(method);
     if (handler_it == cur_node->handlers.end()) {

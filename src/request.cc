@@ -27,7 +27,7 @@ std::string_view format_method(const Method method) {
             return "PATCH";
     }
 
-    std::unreachable();
+    __builtin_unreachable();
 }
 
 std::ostream& operator<<(std::ostream& os, const Method& method) {

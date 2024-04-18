@@ -1,17 +1,10 @@
 #include "str_util.hh"
 
+#include <algorithm>
 #include <ranges>
 
 namespace http {
 namespace str_util {
-size_t length(const std::string_view s) {
-    return s.size();
-}
-
-size_t length(const char) {
-    return 1;
-}
-
 std::string_view ltrim(const std::string_view s) {
     const auto first_non_whitespace =
         std::ranges::find_if(s, [](const char c) { return !std::isspace(c); });
