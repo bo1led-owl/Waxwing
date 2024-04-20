@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include "result.hh"
+
 namespace http {
 class FileDescriptor {
 protected:
@@ -36,8 +38,13 @@ public:
 };
 
 class Socket final : public FileDescriptor {
+    Socket(int fd) : FileDescriptor{fd} {}
+
 public:
-    Socket(const std::string_view address, const uint16_t port);
+    Socket() : FileDescriptor{-1} {}
+
+    static Result<Socket, std::string_view> create(
+        const std::string_view address, const uint16_t port);
 
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;

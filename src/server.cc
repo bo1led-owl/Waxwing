@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 #include <charconv>
-#include <expected>
 
 #include "file_descriptor.hh"
 #include "str_split.hh"
@@ -47,7 +46,7 @@ void concat_headers(std::string& buf, const Headers& headers) {
     }
 }
 
-std::optional<Request> read_request(const Connection& conn) {
+Result<Request, std::string_view> read_request(const Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
@@ -55,7 +54,7 @@ std::optional<Request> read_request(const Connection& conn) {
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
-        return std::nullopt;
+        return Error{"No request line"};
     }
 
     const auto token_split = str_util::split(*line_iter, ' ');
@@ -79,7 +78,7 @@ std::optional<Request> read_request(const Connection& conn) {
     }
 
     if (!method || !target || !http_version) {
-        return std::nullopt;
+        return Error{"Error parsing request line"};
     }
 
     Headers headers;
@@ -108,7 +107,7 @@ std::optional<Request> read_request(const Connection& conn) {
                             raw_content_length.end(), content_length);
 
         if (ec != std::errc{}) {
-            return std::nullopt;
+            return Error{"Error parsing `Content-Length`"};
         }
 
         body.reserve(body.size() + content_length);
@@ -159,13 +158,14 @@ void Server::route(const std::string_view target, const Method method,
     router_.add_route(target, method, handler);
 }
 
-void Server::handle_connection(const Connection& connection) const {
-    std::optional<Request> req_opt = read_request(connection);
-    if (!req_opt) {
-        return;
+Result<void, std::string_view> Server::handle_connection(
+    const Connection& connection) const {
+    auto req_res = read_request(connection);
+    if (!req_res) {
+        return Error{req_res.error()};
     }
 
-    Request& req = req_opt.value();
+    Request& req = req_res.value();
 
     std::pair<RequestHandler, Params> route =
         router_.route(req.target(), req.method());
@@ -173,17 +173,21 @@ void Server::handle_connection(const Connection& connection) const {
     req.set_params(route.second);
     Response resp = route.first(req);
     send_response(connection, resp);
+
+    return Result{};
 }
 
 void Server::print_route_tree() const {
     router_.print_tree();
 }
 
-bool Server::serve(const std::string_view address, const uint16_t port) const {
-    const Socket sock{address, port};
-    if (!sock.is_valid()) {
-        return false;
+Result<void, std::string_view> Server::serve(const std::string_view address,
+                                             const uint16_t port) const {
+    auto sock_res = Socket::create(address, port);
+    if (!sock_res) {
+        return Error{sock_res.error()};
     }
+    const Socket sock = std::move(sock_res.value());
 
     for (;;) {
         const Connection conn = sock.accept();
@@ -194,6 +198,6 @@ bool Server::serve(const std::string_view address, const uint16_t port) const {
         handle_connection(conn);
     }
 
-    return true;
+    return Result{};
 }
 }  // namespace http

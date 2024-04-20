@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cstring>
 #include <string>
 #include <utility>
 
@@ -37,44 +38,32 @@ size_t Connection::send(const std::string_view s) const {
     return ::send(fd_, s.data(), s.size(), 0);
 }
 
-Socket::Socket(const std::string_view address, const uint16_t port) {
-    const auto report_on_failure = [this](const int result,
-                                          const std::string_view msg) {
-        if (result < 0) {
-            this->fd_ = -1;
-            ::perror(msg.data());
-            return true;
-        }
-        return false;
-    };
-
-    fd_ = ::socket(PF_INET, SOCK_STREAM, 0);
-    if (report_on_failure(fd_, "Socket creation error")) {
-        return;
+Result<Socket, std::string_view> Socket::create(const std::string_view address,
+                                                const uint16_t port) {
+    const int fd = ::socket(PF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        return Error{strerror(errno)};
     }
 
     const int option = 1;
-    ::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
 
     sockaddr_in addr{.sin_family = AF_INET,
                      .sin_port = ::htons(port),
                      .sin_addr = {.s_addr = ::htonl(INADDR_ANY)},
                      .sin_zero = {}};
-    if (report_on_failure(
-            inet_pton(AF_INET, address.data(), &addr.sin_addr.s_addr),
-            "Converting address failure")) {
-        return;
+    if (inet_pton(AF_INET, address.data(), &addr.sin_addr.s_addr) < 0) {
+        return Error{strerror(errno)};
     }
 
-    if (report_on_failure(
-            ::bind(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)),
-            "Socket binding error")) {
-        return;
+    if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+        return Error{strerror(errno)};
     }
-    if (report_on_failure(::listen(fd_, MAX_CONNECTIONS),
-                          "Socket listening error")) {
-        return;
+    if (::listen(fd, MAX_CONNECTIONS)) {
+        return Error{strerror(errno)};
     }
+
+    return make_result(Socket{fd});
 }
 
 Socket::Socket(Socket&& other) : FileDescriptor{other.fd_} {

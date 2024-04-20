@@ -15,7 +15,7 @@ class Split final {
     }
 
     std::string_view source_;
-    const Sep sep_;
+    Sep sep_;
 
 public:
     class Iterator final {

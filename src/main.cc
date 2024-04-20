@@ -51,7 +51,8 @@ int main() {
 
     s.print_route_tree();
 
-    if (!s.serve(HOST, PORT)) {
+    if (auto result = s.serve(HOST, PORT); result.has_value()) {
+        fmt::println("Error: {}", result.error());
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
