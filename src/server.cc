@@ -54,7 +54,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
-        return Error{"No request line"};
+        return Error<std::string_view>{"No request line"};
     }
 
     const auto token_split = str_util::split(*line_iter, ' ');
@@ -150,7 +150,6 @@ void send_response(const Connection& conn, Response& resp) {
 
     conn.send(buf);
 }
-
 }  // namespace
 
 void Server::route(const std::string_view target, const Method method,
@@ -174,7 +173,7 @@ Result<void, std::string_view> Server::handle_connection(
     Response resp = route.first(req);
     send_response(connection, resp);
 
-    return Result{};
+    return {};
 }
 
 void Server::print_route_tree() const {
@@ -198,6 +197,6 @@ Result<void, std::string_view> Server::serve(const std::string_view address,
         handle_connection(conn);
     }
 
-    return Result{};
+    return {};
 }
 }  // namespace http

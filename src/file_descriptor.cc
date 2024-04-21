@@ -63,7 +63,7 @@ Result<Socket, std::string_view> Socket::create(const std::string_view address,
         return Error{strerror(errno)};
     }
 
-    return make_result(Socket{fd});
+    return Socket{fd};
 }
 
 Socket::Socket(Socket&& other) : FileDescriptor{other.fd_} {
