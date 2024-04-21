@@ -2,6 +2,10 @@
 
 #include <functional>
 #include <memory>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "request.hh"
 #include "response.hh"
@@ -30,10 +34,9 @@ class Router {
         RouteNode(const Type type, const std::string_view key)
             : type{type}, key{get_path_parameter_key(key)} {}
 
-        static std::string_view get_path_parameter_key(
-            const std::string_view key);
-        static Type parse_type(const std::string_view s);
-        void print(const int layer = 0) const;
+        static std::string_view get_path_parameter_key(std::string_view key);
+        static Type parse_type(std::string_view s);
+        void print(int layer = 0) const;
     };
 
     std::unique_ptr<RouteNode> root_;
@@ -45,10 +48,10 @@ public:
                                             "")},
           not_found_handler_{not_found_handler} {}
 
-    void add_route(const std::string_view target, const Method method,
-                   const RequestHandler handler);
-    std::pair<RequestHandler, Params> route(const std::string_view target,
-                                            const Method method) const;
+    void add_route(std::string_view target, Method method,
+                   const RequestHandler& handler);
+    std::pair<RequestHandler, Params> route(std::string_view target,
+                                            Method method) const;
     void set_not_found_handler(const RequestHandler& handler);
     void print_tree() const;
 };

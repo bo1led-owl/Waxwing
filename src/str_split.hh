@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <iterator>
+#include <string_view>
 
 namespace http {
 namespace str_util {
@@ -49,7 +51,7 @@ public:
             source_ = source_.substr(
                 std::min(source_.size(), cur_.size() + length(sep_)));
             size_t pos = source_.find(sep_);
-            size_t len = pos;
+            const size_t len = pos;
             if (pos != std::string_view::npos) {
                 pos += length(sep_);
             }

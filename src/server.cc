@@ -1,14 +1,23 @@
 #include "server.hh"
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
 #include <charconv>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <string_view>
+#include <utility>
 
+#include "concurrency.hh"
 #include "file_descriptor.hh"
+#include "request.hh"
+#include "response.hh"
+#include "result.hh"
+#include "router.hh"
 #include "str_split.hh"
 #include "str_util.hh"
+#include "types.hh"
 
 namespace http {
 namespace {
@@ -60,22 +69,22 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     const auto token_split = str_util::split(*line_iter, ' ');
     auto token_iter = token_split.begin();
 
-    std::optional<Method> method = std::nullopt;
-    if (token_iter != token_split.end()) {
-        method = parse_method(*token_iter);
-    }
-    token_iter++;
+    auto get_tok = [&token_iter,
+                    &token_split]() -> std::optional<std::string_view> {
+        std::optional<std::string_view> result = std::nullopt;
 
-    std::optional<std::string_view> target = std::nullopt;
-    if (token_iter != token_split.end()) {
-        target = *token_iter;
-    }
-    token_iter++;
+        if (token_iter != token_split.end()) {
+            result = *token_iter;
+        }
 
-    std::optional<std::string_view> http_version = std::nullopt;
-    if (token_iter != token_split.end()) {
-        http_version = *token_iter;
-    }
+        token_iter++;
+        return result;
+    };
+
+    const std::optional<Method> method =
+        get_tok().and_then([](std::string_view s) { return parse_method(s); });
+    const std::optional<std::string_view> target = get_tok();
+    const std::optional<std::string_view> http_version = get_tok();
 
     if (!method || !target || !http_version) {
         return Error{"Error parsing request line"};
@@ -158,7 +167,7 @@ void Server::route(const std::string_view target, const Method method,
 }
 
 Result<void, std::string_view> Server::handle_connection(
-    const Connection& connection) const {
+    Connection connection) const {
     auto req_res = read_request(connection);
     if (!req_res) {
         return Error{req_res.error()};
@@ -186,15 +195,17 @@ Result<void, std::string_view> Server::serve(const std::string_view address,
     if (!sock_res) {
         return Error{sock_res.error()};
     }
-    const Socket sock = std::move(sock_res.value());
+    Socket sock = std::move(sock_res.value());
+
+    concurrency::ThreadPool thrd_pool;
 
     for (;;) {
-        const Connection conn = sock.accept();
-        if (!conn.is_valid()) {
-            continue;
+        Connection conn = sock.accept();
+        if (conn.is_valid()) {
+            thrd_pool.async([this, _conn = std::move(conn)] mutable {
+                handle_connection(std::move(_conn));
+            });
         }
-
-        handle_connection(conn);
     }
 
     return {};

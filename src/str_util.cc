@@ -1,19 +1,23 @@
 #include "str_util.hh"
 
 #include <algorithm>
+#include <cctype>
 #include <ranges>
+#include <string>
+#include <string_view>
 
 namespace http {
 namespace str_util {
 std::string_view ltrim(const std::string_view s) {
-    const auto first_non_whitespace =
+    const std::string_view::iterator first_non_whitespace =
         std::ranges::find_if(s, [](const char c) { return !std::isspace(c); });
     return s.substr(first_non_whitespace - s.cbegin());
 }
 
 std::string_view rtrim(const std::string_view s) {
-    const auto first_non_whitespace = std::ranges::find_if(
-        s | std::views::reverse, [](const char c) { return !std::isspace(c); });
+    const std::string_view::reverse_iterator first_non_whitespace =
+        std::ranges::find_if(s | std::views::reverse,
+                             [](const char c) { return !std::isspace(c); });
     return s.substr(0, first_non_whitespace - s.crend() - 1);
 }
 

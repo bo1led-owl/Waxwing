@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <type_traits>
 #include <variant>
 
@@ -105,6 +106,22 @@ public:
 
     operator bool() const {
         return has_value();
+    }
+
+    template <typename F>
+    Result<F, E> map(F&& f) const& {
+        if (has_value()) {
+            return Result{std::invoke(std::forward<F>(f), value())};
+        }
+        return *this;
+    }
+
+    template <typename F>
+    Result<F, E> map(F&& f) && {
+        if (has_value()) {
+            return Result{std::invoke(std::forward<F>(f), value())};
+        }
+        return *this;
     }
 
     [[nodiscard]] value_type& value() &

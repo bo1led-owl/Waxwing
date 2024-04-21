@@ -33,8 +33,8 @@ public:
     Connection(Connection&&);
     Connection& operator=(Connection&&);
 
-    void recv(std::string& s, const size_t n) const;
-    size_t send(const std::string_view s) const;
+    void recv(std::string& s, size_t n) const;
+    size_t send(std::string_view s) const;
 };
 
 class Socket final : public FileDescriptor {
@@ -43,8 +43,8 @@ class Socket final : public FileDescriptor {
 public:
     Socket() : FileDescriptor{-1} {}
 
-    static Result<Socket, std::string_view> create(
-        const std::string_view address, const uint16_t port);
+    static Result<Socket, std::string_view> create(std::string_view address,
+                                                   uint16_t port);
 
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;

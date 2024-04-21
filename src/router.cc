@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <ranges>
+#include <string>
 
 #include "str_split.hh"
 
@@ -41,7 +42,7 @@ void Router::RouteNode::print(const int layer) const {
     for (int i = 0; i < layer * 2; ++i) {
         std::cout << ' ';
     }
-    if (key.size() == 0) {
+    if (key.empty()) {
         std::cout << '/';
     } else {
         switch (type) {
@@ -76,7 +77,7 @@ void Router::print_tree() const {
 }
 
 void Router::add_route(const std::string_view target, const Method method,
-                       const RequestHandler handler) {
+                       const RequestHandler& handler) {
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
@@ -112,16 +113,15 @@ std::pair<RequestHandler, Params> Router::route(const std::string_view target,
     auto iter = split.begin();
     ++iter;
 
-    for (std::string_view component :
+    for (const std::string_view component :
          std::ranges::subrange(iter, split.end())) {
         RouteNode const* parameter_node = nullptr;
 
         for (const auto& child : cur_node->children) {
-            if (child->type == RouteNode::Type::ParamAny &&
-                (component.empty() || parameter_node == nullptr)) {
-                parameter_node = child.get();
-            } else if (child->type == RouteNode::Type::ParamNonEmpty &&
-                       !component.empty()) {
+            if ((child->type == RouteNode::Type::ParamAny &&
+                 (component.empty() || parameter_node == nullptr)) ||
+                (child->type == RouteNode::Type::ParamNonEmpty &&
+                 !component.empty())) {
                 parameter_node = child.get();
             } else if (child->type == RouteNode::Type::Literal &&
                        child->key == component) {
