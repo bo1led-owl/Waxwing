@@ -1,21 +1,25 @@
 #include <fmt/core.h>
 
 #include <charconv>
+#include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 
+#include "request.hh"
 #include "response.hh"
 #include "server.hh"
 
 http::Response hello(const http::Request& req) {
-    std::string resp = fmt::format("Hello, {}. You're dead silent.",
-                                   req.header("name").value_or("anonymous"));
+    const std::string resp =
+        fmt::format("Hello, {}. You're dead silent.",
+                    req.header("name").value_or("anonymous"));
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);
 }
 
 http::Response hello_post(const http::Request& req) {
-    std::string resp =
+    const std::string resp =
         fmt::format("Hello, {}. I heard you say \"{}\".",
                     req.header("name").value_or("anonymous"), req.body());
 
@@ -24,22 +28,20 @@ http::Response hello_post(const http::Request& req) {
 }
 
 http::Response name(const http::Request& req) {
-    std::string resp =
-        fmt::format("hi {}!", req.path_parameter("name").value());
+    const std::string resp = fmt::format("hi {}!", req.path_parameter("name"));
 
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);
 }
 
 http::Response name_action(const http::Request& req) {
-    std::string resp =
-        fmt::format("{} is {}", req.path_parameter("name").value(),
-                    req.path_parameter("action").value());
+    const std::string resp = fmt::format("{} is {}", req.path_parameter("name"),
+                                         req.path_parameter("action"));
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);
 }
 
-uint16_t fact_calc(uint64_t n) {
+uint64_t fact_calc(uint64_t n) {
     uint64_t res = 1;
     for (; n > 0; --n) {
         res *= n;
@@ -48,14 +50,10 @@ uint16_t fact_calc(uint64_t n) {
 }
 
 http::Response fact(const http::Request& req) {
-    const uint16_t n = req.path_parameter("n")
-                           .transform([](const std::string_view s) {
-                               uint64_t res;
-                               std::from_chars(s.begin(), s.end(), res);
-                               return res;
-                           })
-                           .value_or(0);
-    std::string resp = fmt::format("{}", fact_calc(n));
+    const std::string_view s = req.path_parameter("n");
+    uint64_t n;
+    std::from_chars(s.begin(), s.end(), n);
+    const std::string resp = fmt::format("{}", fact_calc(n));
 
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);
@@ -75,7 +73,7 @@ int main() {
 
     s.print_route_tree();
 
-    if (auto result = s.serve(HOST, PORT); result.has_value()) {
+    if (auto result = s.serve(HOST, PORT); result.has_error()) {
         fmt::println("Error: {}", result.error());
         return EXIT_FAILURE;
     }

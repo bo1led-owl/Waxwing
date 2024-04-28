@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <type_traits>
 #include <variant>
 
@@ -10,19 +11,17 @@ template <typename E>
 class Error {
     template <typename G>
     static constexpr bool is_error =
-        std::is_same_v<std::remove_cvref_t<G>, Error<G>>;
+        std::is_same_v<std::remove_cvref_t<G>, Error>;
     template <typename T>
     static constexpr bool can_be_error =
-        (std::is_object_v<E> && !std::is_array_v<E> && !std::is_const_v<E> &&
-         !std::is_volatile_v<E> && !std::is_reference_v<E>);
+        (std::is_object_v<T>)&&(!std::is_array_v<T>)&&(!std::is_const_v<T>)&&(
+            !std::is_volatile_v<T>)&&(!std::is_reference_v<T>);
 
     static_assert(!is_error<E> && can_be_error<E>);
 
     E value_;
 
 public:
-    explicit Error(E err) : value_{std::move(err)} {}
-
     template <typename Err = E>
         requires(!is_error<Err> && std::is_constructible_v<E, Err>)
     explicit Error(Err&& err) : value_{std::forward<Err>(err)} {}
@@ -40,6 +39,9 @@ public:
         return value_;
     }
 };
+
+template <typename E>
+Error(E) -> Error<E>;
 
 template <typename T, typename E>
 class Result {
@@ -104,20 +106,24 @@ public:
         return has_value_;
     }
 
+    bool has_error() const {
+        return !has_value_;
+    }
+
     operator bool() const {
         return has_value();
     }
 
-    template <typename F>
-    Result<F, E> map(F&& f) const& {
+    template <typename F, typename U>
+    Result<U, E> map(F&& f) const& {
         if (has_value()) {
             return Result{std::invoke(std::forward<F>(f), value())};
         }
         return *this;
     }
 
-    template <typename F>
-    Result<F, E> map(F&& f) && {
+    template <typename F, typename U>
+    Result<U, E> map(F&& f) && {
         if (has_value()) {
             return Result{std::invoke(std::forward<F>(f), value())};
         }
@@ -161,4 +167,22 @@ public:
         return std::get<ERROR>(value_);
     }
 };
+
+template <
+    typename T, typename F,
+    typename U = std::remove_cvref_t<std::invoke_result_t<F, T&>>::value_type>
+std::optional<U> and_then(std::optional<T> opt, F&& f) {
+    if (opt.has_value()) {
+        return std::invoke(std::forward<F>(f), opt.value());
+    }
+    return std::nullopt;
+}
+
+template <typename T, typename F>
+auto map(std::optional<T> opt, F f) {
+    if (opt.has_value()) {
+        return std::optional{std::invoke(f, opt.value())};
+    }
+    return std::nullopt;
+}
 }  // namespace http

@@ -1,5 +1,6 @@
 #include "request.hh"
 
+#include <cassert>
 #include <utility>
 
 #include "str_util.hh"
@@ -30,11 +31,7 @@ std::string_view format_method(const Method method) {
     __builtin_unreachable();
 }
 
-std::ostream& operator<<(std::ostream& os, const Method& method) {
-    return os << format_method(method);
-}
-
-void Request::set_params(Params params) {
+void Request::set_params(internal::Params params) {
     params_ = std::move(params);
 }
 
@@ -52,7 +49,7 @@ Method Request::method() const {
 
 std::optional<std::string_view> Request::header(
     const std::string_view key) const {
-    const Headers::const_iterator result =
+    const internal::Headers::const_iterator result =
         headers_.find(str_util::to_lower(key));
     if (result == headers_.end()) {
         return std::nullopt;
@@ -61,12 +58,13 @@ std::optional<std::string_view> Request::header(
     return result->second;
 }
 
-std::optional<std::string_view> Request::path_parameter(
-    const std::string_view key) const {
-    Params::const_iterator result = params_.find(str_util::to_lower(key));
-    if (result == headers_.end()) {
-        return std::nullopt;
-    }
+std::string_view Request::path_parameter(const std::string_view key) const {
+    internal::Params::const_iterator result =
+        params_.find(str_util::to_lower(key));
+
+    assert(
+        result !=
+        headers_.end());  // fail here means that router is working incorrectly
 
     return result->second;
 }

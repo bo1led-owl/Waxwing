@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -7,6 +8,7 @@
 #include "result.hh"
 
 namespace http {
+namespace internal {
 class FileDescriptor {
 protected:
     int fd_;
@@ -30,8 +32,8 @@ public:
     Connection(const Connection&) = delete;
     Connection& operator=(const Connection&) = delete;
 
-    Connection(Connection&&);
-    Connection& operator=(Connection&&);
+    Connection(Connection&&) noexcept;
+    Connection& operator=(Connection&&) noexcept;
 
     void recv(std::string& s, size_t n) const;
     size_t send(std::string_view s) const;
@@ -49,10 +51,10 @@ public:
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
 
-    Socket(Socket&&);
-    Socket& operator=(Socket&&);
+    Socket(Socket&&) noexcept;
+    Socket& operator=(Socket&&) noexcept;
 
     Connection accept() const;
 };
-
+}  // namespace internal
 }  // namespace http

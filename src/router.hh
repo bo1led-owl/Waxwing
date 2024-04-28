@@ -12,6 +12,7 @@
 #include "types.hh"
 
 namespace http {
+namespace internal {
 using RequestHandler = std::function<Response(Request const&)>;
 
 class Router {
@@ -55,4 +56,5 @@ public:
     void set_not_found_handler(const RequestHandler& handler);
     void print_tree() const;
 };
+}  // namespace internal
 }  // namespace http

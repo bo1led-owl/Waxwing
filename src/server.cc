@@ -13,15 +13,15 @@
 #include "file_descriptor.hh"
 #include "request.hh"
 #include "response.hh"
-#include "result.hh"
 #include "router.hh"
 #include "str_split.hh"
 #include "str_util.hh"
 #include "types.hh"
 
+constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
+
 namespace http {
 namespace {
-constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
 
 std::optional<Method> parse_method(const std::string_view s) {
     if (s == "GET") {
@@ -49,13 +49,14 @@ void concat_header(std::string& buf, const std::string_view key,
     buf += "\r\n";
 }
 
-void concat_headers(std::string& buf, const Headers& headers) {
+void concat_headers(std::string& buf, const internal::Headers& headers) {
     for (const auto& [key, value] : headers) {
         concat_header(buf, key, value);
     }
 }
 
-Result<Request, std::string_view> read_request(const Connection& conn) {
+Result<Request, std::string_view> read_request(
+    const internal::Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
@@ -63,7 +64,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
-        return Error<std::string_view>{"No request line"};
+        return Error{"No request line"};
     }
 
     const auto token_split = str_util::split(*line_iter, ' ');
@@ -81,8 +82,8 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
         return result;
     };
 
-    const std::optional<Method> method =
-        get_tok().and_then([](std::string_view s) { return parse_method(s); });
+    std::optional<Method> method = and_then(
+        get_tok(), [](const std::string_view s) { return parse_method(s); });
     const std::optional<std::string_view> target = get_tok();
     const std::optional<std::string_view> http_version = get_tok();
 
@@ -90,7 +91,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
         return Error{"Error parsing request line"};
     }
 
-    Headers headers;
+    internal::Headers headers;
 
     for (const std::string_view line :
          std::ranges::subrange(line_iter, line_split.end())) {
@@ -128,7 +129,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     return Request{method.value(), std::string{target.value()}, headers, body};
 }
 
-void send_response(const Connection& conn, Response& resp) {
+void send_response(const internal::Connection& conn, Response& resp) {
     std::string buf;
 
     buf += "HTTP/1.1 ";
@@ -159,15 +160,9 @@ void send_response(const Connection& conn, Response& resp) {
 
     conn.send(buf);
 }
-}  // namespace
 
-void Server::route(const std::string_view target, const Method method,
-                   const RequestHandler& handler) {
-    router_.add_route(target, method, handler);
-}
-
-Result<void, std::string_view> Server::handle_connection(
-    Connection connection) const {
+Result<void, std::string_view> handle_connection(
+    const internal::Router& router, internal::Connection connection) {
     auto req_res = read_request(connection);
     if (!req_res) {
         return Error{req_res.error()};
@@ -175,14 +170,20 @@ Result<void, std::string_view> Server::handle_connection(
 
     Request& req = req_res.value();
 
-    std::pair<RequestHandler, Params> route =
-        router_.route(req.target(), req.method());
+    std::pair<internal::RequestHandler, internal::Params> route =
+        router.route(req.target(), req.method());
 
     req.set_params(route.second);
     Response resp = route.first(req);
     send_response(connection, resp);
 
     return {};
+}
+}  // namespace
+
+void Server::route(const std::string_view target, const Method method,
+                   const internal::RequestHandler& handler) {
+    router_.add_route(target, method, handler);
 }
 
 void Server::print_route_tree() const {
@@ -191,19 +192,19 @@ void Server::print_route_tree() const {
 
 Result<void, std::string_view> Server::serve(const std::string_view address,
                                              const uint16_t port) const {
-    auto sock_res = Socket::create(address, port);
+    auto sock_res = internal::Socket::create(address, port);
     if (!sock_res) {
         return Error{sock_res.error()};
     }
-    Socket sock = std::move(sock_res.value());
+    internal::Socket sock = std::move(sock_res.value());
 
-    concurrency::ThreadPool thrd_pool;
+    internal::concurrency::ThreadPool thrd_pool;
 
     for (;;) {
-        Connection conn = sock.accept();
-        if (conn.is_valid()) {
-            thrd_pool.async([this, _conn = std::move(conn)] mutable {
-                handle_connection(std::move(_conn));
+        internal::Connection connection = sock.accept();
+        if (connection.is_valid()) {
+            thrd_pool.async([this, conn = std::move(connection)]() mutable {
+                handle_connection(router_, std::move(conn));
             });
         }
     }

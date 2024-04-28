@@ -7,6 +7,7 @@
 #include "str_split.hh"
 
 namespace http {
+namespace internal {
 std::string_view Router::RouteNode::get_path_parameter_key(
     const std::string_view key) {
     if (key.empty()) {
@@ -59,7 +60,7 @@ void Router::RouteNode::print(const int layer) const {
     }
     std::cout << ' ';
     for (const auto& [method, _] : handlers) {
-        std::cout << method << ' ';
+        std::cout << format_method(method) << ' ';
     }
     std::cout << '\n';
 
@@ -148,4 +149,5 @@ std::pair<RequestHandler, Params> Router::route(const std::string_view target,
 
     return {handler_it->second, params};
 }
+}  // namespace internal
 }  // namespace http

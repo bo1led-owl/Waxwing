@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 namespace http {
+namespace internal {
 struct string_hash {
     using hash_type = std::hash<std::string_view>;
     using is_transparent = void;
@@ -26,4 +27,5 @@ using Headers =
     std::unordered_map<std::string, std::string, string_hash, std::equal_to<>>;
 using Params =
     std::unordered_map<std::string, std::string, string_hash, std::equal_to<>>;
+}  // namespace internal
 }  // namespace http

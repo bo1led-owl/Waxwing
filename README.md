@@ -2,7 +2,8 @@
 A simple HTTP server with easy to use API
 
 ## Features
-- Almost no boilerplate
+- No exceptions
+- No boilerplate
 - Request header parsing
 - Path parameters
 

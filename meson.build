@@ -1,5 +1,6 @@
-project('sandbox', 'cpp', default_options : [
-  'cpp_std=c++23',
+project('sandbox', ['cpp'], default_options : [
+  'c_std=c2x',
+  'cpp_std=c++20',
   'cpp_eh=none',
   'warning_level=3',
 ])

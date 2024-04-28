@@ -1,29 +1,37 @@
 #include "file_descriptor.hh"
 
 #include <arpa/inet.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <utility>
 
-namespace http {
+#include "result.hh"
+
 constexpr int MAX_CONNECTIONS = 512;
+
+namespace http {
+namespace internal {
 
 FileDescriptor::~FileDescriptor() {
     close(fd_);
 }
 
-bool FileDescriptor::is_valid() const {
+bool internal::FileDescriptor::is_valid() const {
     return fd_ >= 0;
 }
 
-Connection::Connection(Connection&& other) : FileDescriptor{other.fd_} {
+Connection::Connection(Connection&& other) noexcept
+    : FileDescriptor{other.fd_} {
     other.fd_ = -1;
 }
 
-Connection& Connection::operator=(Connection&& rhs) {
+Connection& Connection::operator=(Connection&& rhs) noexcept {
     std::swap(fd_, rhs.fd_);
     return *this;
 }
@@ -40,9 +48,11 @@ size_t Connection::send(const std::string_view s) const {
 
 Result<Socket, std::string_view> Socket::create(const std::string_view address,
                                                 const uint16_t port) {
+    // `strerror` here is OK because this code is used only in the
+    // single-threaded part of the code
     const int fd = ::socket(PF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        return Error{strerror(errno)};
+        return Error{::strerror(errno)};
     }
 
     const int option = 1;
@@ -53,24 +63,24 @@ Result<Socket, std::string_view> Socket::create(const std::string_view address,
                      .sin_addr = {.s_addr = ::htonl(INADDR_ANY)},
                      .sin_zero = {}};
     if (inet_pton(AF_INET, address.data(), &addr.sin_addr.s_addr) < 0) {
-        return Error{strerror(errno)};
+        return Error{::strerror(errno)};
     }
 
     if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-        return Error{strerror(errno)};
+        return Error{::strerror(errno)};
     }
-    if (::listen(fd, MAX_CONNECTIONS)) {
-        return Error{strerror(errno)};
+    if (::listen(fd, MAX_CONNECTIONS) < 0) {
+        return Error{::strerror(errno)};
     }
 
     return Socket{fd};
 }
 
-Socket::Socket(Socket&& other) : FileDescriptor{other.fd_} {
+Socket::Socket(Socket&& other) noexcept : FileDescriptor{other.fd_} {
     other.fd_ = -1;
 }
 
-Socket& Socket::operator=(Socket&& rhs) {
+Socket& Socket::operator=(Socket&& rhs) noexcept {
     std::swap(fd_, rhs.fd_);
     return *this;
 }
@@ -81,4 +91,5 @@ Connection Socket::accept() const {
     return ::accept(fd_, reinterpret_cast<struct sockaddr*>(&clientaddr),
                     &clientaddr_len);
 }
+}  // namespace internal
 }  // namespace http

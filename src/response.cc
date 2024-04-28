@@ -2,10 +2,7 @@
 
 #include <sys/socket.h>
 
-#include <utility>
-
 namespace http {
-
 std::string_view format_content_type(const ContentType content_type) {
     switch (content_type) {
         case ContentType::Text:
@@ -174,7 +171,7 @@ Response& Response::body(const ContentType type, const std::string_view data) {
     return *this;
 }
 
-Headers const& Response::get_headers() const& {
+internal::Headers const& Response::get_headers() const& {
     return headers_;
 }
 
@@ -183,6 +180,6 @@ StatusCode Response::get_status() const {
 }
 
 std::optional<Response::Body> const& Response::get_body() const& {
-    return std::move(body_);
+    return body_;
 }
 }  // namespace http

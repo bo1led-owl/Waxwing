@@ -81,7 +81,7 @@ enum class StatusCode {
 };
 
 std::string_view format_content_type(ContentType content_type);
-std::string_view format_status(StatusCode status);
+std::string_view format_status(StatusCode code);
 
 class Response {
 public:
@@ -97,18 +97,18 @@ public:
 
 private:
     StatusCode status_code_;
-    Headers headers_;
+    internal::Headers headers_;
     std::optional<Body> body_;
 
 public:
     Response(const StatusCode code) : status_code_{code} {}
 
     Response& header(const std::string& key, const std::string& value);
-    Response& body(const ContentType type, std::string&& data);
-    Response& body(const ContentType type, const std::string& data);
-    Response& body(const ContentType type, const std::string_view data);
+    Response& body(ContentType type, std::string&& data);
+    Response& body(ContentType type, const std::string& data);
+    Response& body(ContentType type, std::string_view data);
     StatusCode get_status() const;
-    Headers const& get_headers() const&;
+    internal::Headers const& get_headers() const&;
     std::optional<Body> const& get_body() const&;
 };
 }  // namespace http

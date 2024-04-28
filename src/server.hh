@@ -1,22 +1,19 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <string_view>
 
-#include "file_descriptor.hh"
 #include "result.hh"
 #include "router.hh"
 
 namespace http {
 class Server {
-    Router router_;
-
-    Result<void, std::string_view> handle_connection(
-        Connection connection) const;
+    internal::Router router_;
 
 public:
     void route(std::string_view target, Method method,
-               const RequestHandler& handler);
+               const internal::RequestHandler& handler);
 
     Result<void, std::string_view> serve(std::string_view address,
                                          uint16_t port) const;
