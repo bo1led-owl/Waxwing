@@ -1,4 +1,4 @@
-#include "server.hh"
+#include "server/server.hh"
 
 #include <charconv>
 #include <cstddef>
@@ -11,18 +11,17 @@
 
 #include "concurrency.hh"
 #include "file_descriptor.hh"
-#include "request.hh"
-#include "response.hh"
-#include "router.hh"
+#include "server/request.hh"
+#include "server/response.hh"
+#include "server/router.hh"
+#include "server/types.hh"
 #include "str_split.hh"
 #include "str_util.hh"
-#include "types.hh"
 
 constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
 
 namespace http {
 namespace {
-
 std::optional<Method> parse_method(const std::string_view s) {
     if (s == "GET") {
         return Method::Get;
@@ -93,6 +92,7 @@ Result<Request, std::string_view> read_request(
 
     internal::Headers headers;
 
+    std::optional<size_t> content_length = std::nullopt;
     for (const std::string_view line :
          std::ranges::subrange(line_iter, line_split.end())) {
         if (line.empty()) {
@@ -102,27 +102,27 @@ Result<Request, std::string_view> read_request(
         const std::pair<std::string, std::string> header = parse_header(line);
         headers.insert_or_assign(std::string{header.first},
                                  std::string{header.second});
+
+        if (header.first == "content-length") {
+            size_t len;
+            const auto [_, ec] = std::from_chars(
+                header.second.begin().base(), header.second.end().base(), len);
+
+            if (ec != std::errc{}) {
+                return Error{"Error parsing `Content-Length`"};
+            }
+
+            content_length = len;
+        }
     };
 
     std::string body{line_iter.remaining()};
 
-    const auto content_length_it = headers.find("content-length");
-    if (content_length_it != headers.end()) {
+    if (content_length.has_value()) {
         // content-length header is present
-        const std::string_view raw_content_length = content_length_it->second;
-
-        size_t content_length;
-        const auto [_, ec] =
-            std::from_chars(raw_content_length.begin(),
-                            raw_content_length.end(), content_length);
-
-        if (ec != std::errc{}) {
-            return Error{"Error parsing `Content-Length`"};
-        }
-
-        body.reserve(body.size() + content_length);
+        body.reserve(body.size() + content_length.value());
         while (content_length > body.size()) {
-            conn.recv(body, content_length - body.size());
+            conn.recv(body, content_length.value() - body.size());
         }
     }
 

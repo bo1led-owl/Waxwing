@@ -8,22 +8,35 @@
 
 namespace http {
 template <typename E>
+class Error;
+template <typename T, typename E>
+class Result;
+
+namespace result {
+template <typename G>
+static constexpr bool is_error = false;
+template <typename G>
+static constexpr bool is_error<Error<G>> = true;
+template <typename U>
+static constexpr bool is_result = false;
+template <typename U, typename G>
+static constexpr bool is_result<Result<U, G>> = true;
+}  // namespace result
+
+template <typename E>
 class Error {
-    template <typename G>
-    static constexpr bool is_error =
-        std::is_same_v<std::remove_cvref_t<G>, Error>;
     template <typename T>
     static constexpr bool can_be_error =
         (std::is_object_v<T>)&&(!std::is_array_v<T>)&&(!std::is_const_v<T>)&&(
             !std::is_volatile_v<T>)&&(!std::is_reference_v<T>);
 
-    static_assert(!is_error<E> && can_be_error<E>);
+    static_assert(!result::is_error<E> && can_be_error<E>);
 
     E value_;
 
 public:
     template <typename Err = E>
-        requires(!is_error<Err> && std::is_constructible_v<E, Err>)
+        requires(!result::is_error<Err>) && (std::is_constructible_v<E, Err>)
     explicit Error(Err&& err) : value_{std::forward<Err>(err)} {}
 
     [[nodiscard]] E& error() & {
@@ -45,10 +58,7 @@ Error(E) -> Error<E>;
 
 template <typename T, typename E>
 class Result {
-    template <typename U>
-    static constexpr bool is_result = std::is_same_v<U, Result>;
-
-    static_assert(!is_result<T>);
+    static_assert(!result::is_result<T> && !result::is_error<E>);
 
     static constexpr size_t SUCCESS = 0;
     static constexpr size_t ERROR = 1;
@@ -81,10 +91,11 @@ public:
         : has_value_{false}, value_{std::forward<G>(error.error())} {}
 
     template <typename U = T, typename G = E>
-        requires(!is_result<U> && std::is_constructible_v<T, const U&> &&
-                 std::is_constructible_v<E, const G&>)
+        requires(!result::is_result<U>) &&
+                (std::is_constructible_v<T, const U&>) &&
+                (std::is_constructible_v<E, const G&>)
     Result(const Result<U, G>& res) : has_value_{res.has_value()} {
-        if (has_value()) {
+        if (has_value_) {
             std::get<SUCCESS>(value_) = res.error();
         } else {
             std::get<ERROR>(value_) = res.value();
@@ -92,10 +103,10 @@ public:
     }
 
     template <typename U = T, typename G = E>
-        requires(!is_result<U> && std::is_constructible_v<T, U> &&
-                 std::is_constructible_v<E, G>)
+        requires(!result::is_result<U>) && (std::is_constructible_v<T, U>) &&
+                (std::is_constructible_v<E, G>)
     Result(Result<U, G>&& res) : has_value_{res.has_value()} {
-        if (has_value()) {
+        if (has_value_) {
             std::get<SUCCESS>(value_) = std::move(res.error());
         } else {
             std::get<ERROR>(value_) = std::move(res.value());
@@ -135,35 +146,60 @@ public:
     {
         return std::get<SUCCESS>(value_);
     }
-
     [[nodiscard]] const value_type& value() const&
         requires(!std::is_void_v<T>)
     {
         return std::get<SUCCESS>(value_);
     }
-
     [[nodiscard]] value_type&& value() &&
         requires(!std::is_void_v<T>)
     {
         return std::get<SUCCESS>(value_);
     }
-
     [[nodiscard]] const value_type&& value() const&&
         requires(!std::is_void_v<T>)
     {
         return std::get<SUCCESS>(value_);
     }
 
-    [[nodiscard]] error_type& error() & {
+    template <typename U = T>
+    [[nodiscard]] value_type value_or(U&& default_value) const&
+        requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
+    {
+        if (has_value_) {
+            return std::get<SUCCESS>(value_);
+        }
+        return value_type{std::forward<U>(default_value)};
+    }
+
+    template <typename U = T>
+    [[nodiscard]] value_type value_or(U&& default_value) &&
+        requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
+    {
+        if (has_value_) {
+            return std::get<SUCCESS>(value_);
+        }
+        return value_type{std::forward<U>(default_value)};
+    }
+
+    [[nodiscard]] error_type& error() &
+        requires(!std::is_void_v<E>)
+    {
         return std::get<ERROR>(value_);
     }
-    [[nodiscard]] const error_type& error() const& {
+    [[nodiscard]] const error_type& error() const&
+        requires(!std::is_void_v<E>)
+    {
         return std::get<ERROR>(value_);
     }
-    [[nodiscard]] error_type&& error() && {
+    [[nodiscard]] error_type&& error() &&
+        requires(!std::is_void_v<E>)
+    {
         return std::get<ERROR>(value_);
     }
-    [[nodiscard]] const error_type&& error() const&& {
+    [[nodiscard]] const error_type&& error() const&&
+        requires(!std::is_void_v<E>)
+    {
         return std::get<ERROR>(value_);
     }
 };

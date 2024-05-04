@@ -6,22 +6,20 @@
 #include <string>
 #include <string_view>
 
-#include "request.hh"
-#include "response.hh"
-#include "server.hh"
+#include "server/server.hh"
 
 http::Response hello(const http::Request& req) {
+    const std::string_view name = req.header("name").value_or("anonymous");
     const std::string resp =
-        fmt::format("Hello, {}. You're dead silent.",
-                    req.header("name").value_or("anonymous"));
+        fmt::format("Hello, {}. You're dead silent.", name);
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);
 }
 
 http::Response hello_post(const http::Request& req) {
+    const std::string_view name = req.header("name").value_or("anonymous");
     const std::string resp =
-        fmt::format("Hello, {}. I heard you say \"{}\".",
-                    req.header("name").value_or("anonymous"), req.body());
+        fmt::format("Hello, {}. I heard you say \"{}\".", name, req.body());
 
     return http::Response(http::StatusCode::Ok)
         .body(http::ContentType::Text, resp);

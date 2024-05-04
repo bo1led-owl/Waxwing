@@ -11,7 +11,7 @@
 #include <string_view>
 #include <utility>
 
-#include "result.hh"
+#include "server/result.hh"
 
 constexpr int MAX_CONNECTIONS = 512;
 

@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-#include "result.hh"
+#include "server/result.hh"
 
 namespace http {
 namespace internal {
