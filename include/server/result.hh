@@ -8,9 +8,10 @@
 
 namespace http {
 template <typename E>
-class Error;
+class [[nodiscard]] Error;
 template <typename T, typename E>
-class Result;
+class [[nodiscard(
+    "`Result` object is ignored, it might have been an error")]] Result;
 
 namespace result {
 template <typename G>

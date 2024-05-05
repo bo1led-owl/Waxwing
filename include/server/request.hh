@@ -18,7 +18,7 @@ enum class Method {
     Patch,
 };
 
-std::string_view format_method(Method method);
+std::string_view format_method(Method method) noexcept;
 
 class Request {
     Method method_;
@@ -32,12 +32,12 @@ public:
             const internal::Headers& headers, const std::string& body)
         : method_{method}, target_{target}, headers_{headers}, body_{body} {}
 
-    void set_params(internal::Params params);
+    void set_params(internal::Params params) noexcept;
 
-    std::string_view target() const;
-    Method method() const;
-    std::string_view body() const;
-    std::optional<std::string_view> header(std::string_view key) const;
-    std::string_view path_parameter(std::string_view key) const;
+    std::string_view target() const noexcept;
+    Method method() const noexcept;
+    std::string_view body() const noexcept;
+    std::optional<std::string_view> header(std::string_view key) const noexcept;
+    std::string_view path_parameter(std::string_view key) const noexcept;
 };
 }  // namespace http

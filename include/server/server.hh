@@ -13,10 +13,10 @@ class Server {
 
 public:
     void route(std::string_view target, Method method,
-               const internal::RequestHandler& handler);
+               const internal::RequestHandler& handler) noexcept;
 
     Result<void, std::string_view> serve(std::string_view address,
-                                         uint16_t port) const;
-    void print_route_tree() const;
+                                         uint16_t port) const noexcept;
+    void print_route_tree() const noexcept;
 };
 };  // namespace http

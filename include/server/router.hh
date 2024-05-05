@@ -33,11 +33,13 @@ class Router {
         std::vector<std::unique_ptr<RouteNode>> children;
 
         RouteNode(const Type type, const std::string_view key)
-            : type{type}, key{get_path_parameter_key(key)} {}
+            : type{type}, key{parse_key(key)} {}
 
-        static std::string_view get_path_parameter_key(std::string_view key);
-        static Type parse_type(std::string_view s);
-        void print(int layer = 0) const;
+        /// Parse path component key from parameter like `*name` or `:action`
+        static std::string_view parse_key(std::string_view key) noexcept;
+        /// Parse path component type from its string representation
+        static Type parse_type(std::string_view s) noexcept;
+        void print(int layer = 0) const noexcept;
     };
 
     std::unique_ptr<RouteNode> root_;
@@ -49,12 +51,16 @@ public:
                                             "")},
           not_found_handler_{not_found_handler} {}
 
+    /// Insert new route into the tree
     void add_route(std::string_view target, Method method,
-                   const RequestHandler& handler);
+                   const RequestHandler& handler) noexcept;
+
+    /// Parse given target and return corresponding request handler and parsed
+    /// path parameters. If handler was not found, returns 404 hanlder
     std::pair<RequestHandler, Params> route(std::string_view target,
-                                            Method method) const;
-    void set_not_found_handler(const RequestHandler& handler);
-    void print_tree() const;
+                                            Method method) const noexcept;
+    void set_not_found_handler(const RequestHandler& handler) noexcept;
+    void print_tree() const noexcept;
 };
 }  // namespace internal
 }  // namespace http

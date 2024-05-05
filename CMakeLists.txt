@@ -1,14 +1,18 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.10)
 project(server)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_COLOR_DIAGNOSTICS ON)
+
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_EXAMPLE "Build example" ON)
+option(ENABLE_TESTING "Build testing target" ON)
 
 add_library(${PROJECT_NAME} STATIC)
 target_sources(${PROJECT_NAME} PRIVATE
-  src/file_descriptor.cc
+  src/io.cc
   src/request.cc
   src/response.cc
   src/router.cc
@@ -25,6 +29,10 @@ target_include_directories(${PROJECT_NAME}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/server.hh)
+
+if (ENABLE_TESTING)
+  add_subdirectory(tests)
+endif(ENABLE_TESTING)
 
 if (BUILD_EXAMPLE)
   add_subdirectory(example)

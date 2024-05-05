@@ -6,7 +6,7 @@
 #include "str_util.hh"
 
 namespace http {
-std::string_view format_method(const Method method) {
+std::string_view format_method(const Method method) noexcept {
     switch (method) {
         case Method::Get:
             return "GET";
@@ -31,24 +31,24 @@ std::string_view format_method(const Method method) {
     __builtin_unreachable();
 }
 
-void Request::set_params(internal::Params params) {
+void Request::set_params(internal::Params params) noexcept {
     params_ = std::move(params);
 }
 
-std::string_view Request::body() const {
+std::string_view Request::body() const noexcept {
     return body_;
 }
 
-std::string_view Request::target() const {
+std::string_view Request::target() const noexcept {
     return target_;
 }
 
-Method Request::method() const {
+Method Request::method() const noexcept {
     return method_;
 }
 
 std::optional<std::string_view> Request::header(
-    const std::string_view key) const {
+    const std::string_view key) const noexcept {
     const internal::Headers::const_iterator result =
         headers_.find(str_util::to_lower(key));
     if (result == headers_.end()) {
@@ -58,7 +58,8 @@ std::optional<std::string_view> Request::header(
     return result->second;
 }
 
-std::string_view Request::path_parameter(const std::string_view key) const {
+std::string_view Request::path_parameter(
+    const std::string_view key) const noexcept {
     internal::Params::const_iterator result =
         params_.find(str_util::to_lower(key));
 

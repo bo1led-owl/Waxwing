@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "concurrency.hh"
-#include "file_descriptor.hh"
+#include "io.hh"
 #include "server/request.hh"
 #include "server/response.hh"
 #include "server/router.hh"
@@ -182,16 +182,16 @@ Result<void, std::string_view> handle_connection(
 }  // namespace
 
 void Server::route(const std::string_view target, const Method method,
-                   const internal::RequestHandler& handler) {
+                   const internal::RequestHandler& handler) noexcept {
     router_.add_route(target, method, handler);
 }
 
-void Server::print_route_tree() const {
+void Server::print_route_tree() const noexcept {
     router_.print_tree();
 }
 
-Result<void, std::string_view> Server::serve(const std::string_view address,
-                                             const uint16_t port) const {
+Result<void, std::string_view> Server::serve(
+    const std::string_view address, const uint16_t port) const noexcept {
     auto sock_res = internal::Socket::create(address, port);
     if (!sock_res) {
         return Error{sock_res.error()};
@@ -204,7 +204,8 @@ Result<void, std::string_view> Server::serve(const std::string_view address,
         internal::Connection connection = sock.accept();
         if (connection.is_valid()) {
             thrd_pool.async([this, conn = std::move(connection)]() mutable {
-                handle_connection(router_, std::move(conn));
+                [[maybe_unused]] Result<void, std::string_view> result =
+                    handle_connection(router_, std::move(conn));
             });
         }
     }

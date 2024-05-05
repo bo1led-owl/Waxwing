@@ -80,8 +80,8 @@ enum class StatusCode {
     NetworkAuthenticationRequired = 511,
 };
 
-std::string_view format_content_type(ContentType content_type);
-std::string_view format_status(StatusCode code);
+std::string_view format_content_type(ContentType content_type) noexcept;
+std::string_view format_status(StatusCode code) noexcept;
 
 class Response {
 public:
@@ -101,14 +101,14 @@ private:
     std::optional<Body> body_;
 
 public:
-    Response(const StatusCode code) : status_code_{code} {}
+    Response(const StatusCode code) noexcept : status_code_{code} {}
 
-    Response& header(const std::string& key, const std::string& value);
-    Response& body(ContentType type, std::string&& data);
-    Response& body(ContentType type, const std::string& data);
-    Response& body(ContentType type, std::string_view data);
-    StatusCode get_status() const;
-    internal::Headers const& get_headers() const&;
-    std::optional<Body> const& get_body() const&;
+    Response& header(const std::string& key, const std::string& value) noexcept;
+    Response& body(ContentType type, std::string&& data) noexcept;
+    Response& body(ContentType type, const std::string& data) noexcept;
+    Response& body(ContentType type, std::string_view data) noexcept;
+    StatusCode get_status() const noexcept;
+    internal::Headers const& get_headers() const& noexcept;
+    std::optional<Body> const& get_body() const& noexcept;
 };
 }  // namespace http

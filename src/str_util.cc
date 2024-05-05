@@ -18,7 +18,9 @@ std::string_view rtrim(const std::string_view s) {
     const std::string_view::reverse_iterator first_non_whitespace =
         std::ranges::find_if(s | std::views::reverse,
                              [](const char c) { return !std::isspace(c); });
-    return s.substr(0, first_non_whitespace - s.crend() - 1);
+
+    const auto whitespace_len = first_non_whitespace - s.crbegin();
+    return s.substr(0, s.size() - whitespace_len);
 }
 
 std::string_view trim(const std::string_view s) {

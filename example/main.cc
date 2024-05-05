@@ -71,8 +71,10 @@ int main() {
 
     s.print_route_tree();
 
-    if (auto result = s.serve(HOST, PORT); result.has_error()) {
-        fmt::println("Error: {}", result.error());
+
+    const http::Result<void, std::string_view> serve_result = s.serve(HOST, PORT);
+    if (serve_result.has_error()) {
+        fmt::println("Error: {}", serve_result.error());
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 
 namespace http {
-std::string_view format_content_type(const ContentType content_type) {
+std::string_view format_content_type(const ContentType content_type) noexcept {
     switch (content_type) {
         case ContentType::Text:
             return "text/plain";
@@ -22,7 +22,7 @@ std::string_view format_content_type(const ContentType content_type) {
     __builtin_unreachable();
 }
 
-std::string_view format_status(const StatusCode code) {
+std::string_view format_status(const StatusCode code) noexcept {
     switch (code) {
         case StatusCode::Continue:
             return "100 Continue";
@@ -151,35 +151,38 @@ std::string_view format_status(const StatusCode code) {
     __builtin_unreachable();
 }
 
-Response& Response::header(const std::string& key, const std::string& value) {
+Response& Response::header(const std::string& key,
+                           const std::string& value) noexcept {
     headers_.insert_or_assign(key, value);
     return *this;
 }
 
-Response& Response::body(const ContentType type, std::string&& data) {
+Response& Response::body(const ContentType type, std::string&& data) noexcept {
     body_ = Response::Body{type, data};
     return *this;
 }
 
-Response& Response::body(const ContentType type, const std::string& data) {
+Response& Response::body(const ContentType type,
+                         const std::string& data) noexcept {
     body_ = Response::Body{type, data};
     return *this;
 }
 
-Response& Response::body(const ContentType type, const std::string_view data) {
+Response& Response::body(const ContentType type,
+                         const std::string_view data) noexcept {
     body_ = Response::Body{type, std::string{data}};
     return *this;
 }
 
-internal::Headers const& Response::get_headers() const& {
+internal::Headers const& Response::get_headers() const& noexcept {
     return headers_;
 }
 
-StatusCode Response::get_status() const {
+StatusCode Response::get_status() const noexcept {
     return status_code_;
 }
 
-std::optional<Response::Body> const& Response::get_body() const& {
+std::optional<Response::Body> const& Response::get_body() const& noexcept {
     return body_;
 }
 }  // namespace http

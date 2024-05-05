@@ -8,8 +8,8 @@
 
 namespace http {
 namespace internal {
-std::string_view Router::RouteNode::get_path_parameter_key(
-    const std::string_view key) {
+std::string_view Router::RouteNode::parse_key(
+    const std::string_view key) noexcept {
     if (key.empty()) {
         return key;
     }
@@ -24,7 +24,7 @@ std::string_view Router::RouteNode::get_path_parameter_key(
 }
 
 Router::RouteNode::Type Router::RouteNode::parse_type(
-    const std::string_view s) {
+    const std::string_view s) noexcept {
     if (s.empty()) {
         return Type::Literal;
     }
@@ -39,7 +39,7 @@ Router::RouteNode::Type Router::RouteNode::parse_type(
     }
 }
 
-void Router::RouteNode::print(const int layer) const {
+void Router::RouteNode::print(const int layer) const noexcept {
     for (int i = 0; i < layer * 2; ++i) {
         std::cout << ' ';
     }
@@ -69,16 +69,16 @@ void Router::RouteNode::print(const int layer) const {
     }
 }
 
-void Router::set_not_found_handler(const RequestHandler& handler) {
+void Router::set_not_found_handler(const RequestHandler& handler) noexcept {
     not_found_handler_ = handler;
 }
 
-void Router::print_tree() const {
+void Router::print_tree() const noexcept {
     root_->print();
 }
 
 void Router::add_route(const std::string_view target, const Method method,
-                       const RequestHandler& handler) {
+                       const RequestHandler& handler) noexcept {
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
@@ -87,7 +87,7 @@ void Router::add_route(const std::string_view target, const Method method,
     for (std::string_view component :
          std::ranges::subrange(iter, split.end())) {
         const RouteNode::Type type = RouteNode::parse_type(component);
-        component = RouteNode::get_path_parameter_key(component);
+        component = RouteNode::parse_key(component);
 
         for (const auto& child : cur_node->children) {
             if (child->key == component && child->type == type) {
@@ -105,8 +105,8 @@ void Router::add_route(const std::string_view target, const Method method,
     cur_node->handlers[method] = handler;
 }
 
-std::pair<RequestHandler, Params> Router::route(const std::string_view target,
-                                                const Method method) const {
+std::pair<RequestHandler, Params> Router::route(
+    const std::string_view target, const Method method) const noexcept {
     Params params;
 
     RouteNode const* cur_node = root_.get();
