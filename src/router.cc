@@ -136,7 +136,7 @@ std::pair<RequestHandler, Params> Router::route(
                 {std::string{parameter_node->key}, std::string{component}});
             cur_node = parameter_node;
         } else {
-            return {not_found_handler_, params};
+            return {not_found_handler_, std::move(params)};
         }
 
     found_literal:;
@@ -144,10 +144,10 @@ std::pair<RequestHandler, Params> Router::route(
 
     const auto handler_it = cur_node->handlers.find(method);
     if (handler_it == cur_node->handlers.end()) {
-        return {not_found_handler_, params};
+        return {not_found_handler_, std::move(params)};
     }
 
-    return {handler_it->second, params};
+    return {handler_it->second, std::move(params)};
 }
 }  // namespace internal
 }  // namespace http

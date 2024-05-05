@@ -22,7 +22,7 @@ template <typename F, typename R, typename... Args>
 struct FunctorContainer final : FunctorContainerBase<R, Args...> {
     F f;
 
-    FunctorContainer(F&& f) : f{std::move(f)} {}
+    FunctorContainer(F&& f) : f{std::forward<F>(f)} {}
 
     R operator()(Args&&... args) override {
         return f(std::forward<Args>(args)...);

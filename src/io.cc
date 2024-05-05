@@ -22,7 +22,7 @@ FileDescriptor::~FileDescriptor() {
     close(fd_);
 }
 
-bool internal::FileDescriptor::is_valid() const {
+bool FileDescriptor::is_valid() const {
     return fd_ >= 0;
 }
 

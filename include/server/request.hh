@@ -19,6 +19,7 @@ enum class Method {
 };
 
 std::string_view format_method(Method method) noexcept;
+std::optional<Method> parse_method(std::string_view s) noexcept;
 
 class Request {
     Method method_;
@@ -28,11 +29,20 @@ class Request {
     std::string body_;
 
 public:
-    Request(const Method method, const std::string& target,
-            const internal::Headers& headers, const std::string& body)
-        : method_{method}, target_{target}, headers_{headers}, body_{body} {}
+    template <typename T, typename U>
+        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
+    Request(Method method, T&& target,
+            const internal::Headers& headers, U&& body)
+        : method_{method}, target_{std::forward<T>(target)}, headers_{headers}, body_{std::forward<U>(body)} {}
 
-    void set_params(internal::Params params) noexcept;
+    template <typename T, typename U>
+        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
+    Request(Method method, T&& target,
+            internal::Headers&& headers, U&& body)
+        : method_{method}, target_{std::forward<T>(target)}, headers_{std::move(headers)}, body_{std::forward<U>(body)} {}
+
+    void set_params(const internal::Params& params) noexcept;
+    void set_params(internal::Params&& params) noexcept;
 
     std::string_view target() const noexcept;
     Method method() const noexcept;

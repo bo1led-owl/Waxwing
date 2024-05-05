@@ -3,6 +3,8 @@
 #include <sys/socket.h>
 
 namespace http {
+using namespace internal;
+
 std::string_view format_content_type(const ContentType content_type) noexcept {
     switch (content_type) {
         case ContentType::Text:
@@ -17,9 +19,9 @@ std::string_view format_content_type(const ContentType content_type) noexcept {
             return "application/css";
         case ContentType::Javascript:
             return "application/javasript";
+        default:
+            __builtin_unreachable();
     }
-
-    __builtin_unreachable();
 }
 
 std::string_view format_status(const StatusCode code) noexcept {
@@ -146,35 +148,12 @@ std::string_view format_status(const StatusCode code) noexcept {
             return "510 Not Extended";
         case StatusCode::NetworkAuthenticationRequired:
             return "511 Network Authentication Required";
+        default:
+            __builtin_unreachable();
     }
-
-    __builtin_unreachable();
 }
 
-Response& Response::header(const std::string& key,
-                           const std::string& value) noexcept {
-    headers_.insert_or_assign(key, value);
-    return *this;
-}
-
-Response& Response::body(const ContentType type, std::string&& data) noexcept {
-    body_ = Response::Body{type, data};
-    return *this;
-}
-
-Response& Response::body(const ContentType type,
-                         const std::string& data) noexcept {
-    body_ = Response::Body{type, data};
-    return *this;
-}
-
-Response& Response::body(const ContentType type,
-                         const std::string_view data) noexcept {
-    body_ = Response::Body{type, std::string{data}};
-    return *this;
-}
-
-internal::Headers const& Response::get_headers() const& noexcept {
+Headers const& Response::get_headers() const& noexcept {
     return headers_;
 }
 
