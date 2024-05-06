@@ -17,7 +17,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/response.cc
   src/router.cc
   src/server.cc
-  src/str_util.cc
 )
 
 target_include_directories(${PROJECT_NAME}

@@ -2,17 +2,17 @@
 
 #include <cstddef>
 #include <iterator>
+#include <optional>
 #include <string_view>
 
 namespace http {
 namespace str_util {
-
 template <typename Sep>
 class Split final {
-    static size_t length(const std::string_view s) {
+    constexpr static size_t length(const std::string_view s) {
         return s.size();
     }
-    static size_t length(const char) {
+    constexpr static size_t length(const char) {
         return 1;
     }
 
@@ -20,18 +20,18 @@ class Split final {
     Sep sep_;
 
 public:
+    struct IteratorTerminator final {};
+
     class Iterator final {
         friend class Split;
 
-        std::string_view source_;
+        std::optional<std::string_view> remaining_;
+        std::optional<std::string_view> cur_;
         Sep sep_;
-        std::string_view cur_;
 
-        Iterator(const std::string_view src, const Sep sep)
-            : source_{src}, sep_{sep}, cur_{src.substr(0, src.find(sep))} {}
-
-        static Iterator empty(const Sep sep) {
-            return Iterator{std::string_view{}, sep};
+        constexpr Iterator(const std::string_view src, const Sep sep)
+            : remaining_{src}, sep_{sep} {
+            ++(*this);
         }
 
     public:
@@ -41,69 +41,67 @@ public:
         using reference = const std::string_view&;
         using iterator_category = std::forward_iterator_tag;
 
-        Iterator() {}
+        constexpr Iterator& operator++() {
+            const size_t len = remaining_->find(sep_);
+            const bool found = len != std::string_view::npos;
 
-        Iterator& operator++() {
-            if (source_.empty()) {
-                return *this;
+            if (found) {
+                cur_ = remaining_->substr(0, len);
+                remaining_ = remaining_->substr(len + length(sep_));
+            } else if (remaining_) {
+                cur_ = remaining_;
+                remaining_ = std::nullopt;
+            } else {
+                cur_ = std::nullopt;
+                remaining_ = std::nullopt;
             }
 
-            source_ = source_.substr(
-                std::min(source_.size(), cur_.size() + length(sep_)));
-            size_t pos = source_.find(sep_);
-            const size_t len = pos;
-            if (pos != std::string_view::npos) {
-                pos += length(sep_);
-            }
-
-            cur_ = source_.substr(0, len);
             return *this;
         }
 
-        Iterator operator++(int) {
+        constexpr Iterator operator++(int) {
             Iterator prev = *this;
             ++(*this);
             return prev;
         }
 
-        value_type operator*() {
-            return cur_;
+        constexpr value_type operator*() {
+            return cur_.value();
         }
 
-        pointer operator->() {
-            return &cur_;
+        constexpr pointer operator->() {
+            return &cur_.value();
         }
 
-        bool operator==(const Iterator& other) const {
-            return source_ == other.source_ && cur_ == other.cur_ &&
+        constexpr bool operator==(const Iterator& other) const noexcept {
+            return remaining_ == other.remaining_ && cur_ == other.cur_ &&
                    sep_ == other.sep_;
         }
 
-        std::string_view remaining() const {
-            return source_;
+        constexpr bool operator==(const IteratorTerminator&) const noexcept {
+            return cur_ == std::nullopt;
+        }
+
+        constexpr std::string_view remaining() const noexcept {
+            return remaining_.value_or("");
         }
     };
 
-    Split(const std::string_view source, const Sep sep)
+    constexpr Split(const std::string_view source, const Sep sep)
         : source_(source), sep_(sep) {}
 
-    std::string_view remaining() const {
-        return source_;
-    }
-
-    Iterator begin() const {
+    constexpr Iterator begin() const {
         return Iterator{source_, sep_};
     }
 
-    Iterator end() const {
-        return Iterator::empty(sep_);
+    constexpr IteratorTerminator end() const {
+        return IteratorTerminator{};
     }
 };
 
 template <typename Sep>
-Split<Sep> split(const std::string_view str, const Sep sep) {
+constexpr Split<Sep> split(const std::string_view str, const Sep sep) {
     return Split(str, sep);
 }
-
 }  // namespace str_util
 }  // namespace http

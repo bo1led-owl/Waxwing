@@ -8,68 +8,74 @@ using namespace http::str_util;
 
 TEST(Split, CharacterSeparatorBasic) {
     auto iter = split("hello world", ' ');
-    const std::vector<std::string_view> words {"hello", "world"};
+    const std::vector<std::string_view> words{"hello", "world"};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, CharacterSeparatorEmptyWords) {
     auto iter = split(" hello  world ", ' ');
-    const std::vector<std::string_view> words {"", "hello", "", "world", ""};
+    const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, CharacterSeparatorSingleItem) {
     auto iter = split("hello", ' ');
-    const std::vector<std::string_view> words {"hello"};  
+    const std::vector<std::string_view> words{"hello"};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, MultiCharacterSeparatorBasic) {
     auto iter = split("helloabaworld", "aba");
-    const std::vector<std::string_view> words {"hello", "world"};
+    const std::vector<std::string_view> words{"hello", "world"};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, MultiCharacterSeparatorEmptyWords) {
     auto iter = split("abahelloabaabaworldaba", "aba");
-    const std::vector<std::string_view> words {"", "hello", "", "world", ""};
+    const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, MultiCharacterSeparatorSingleItem) {
     auto iter = split("hello", "  ");
-    const std::vector<std::string_view> words {"hello"};
+    const std::vector<std::string_view> words{"hello"};
 
     int i = 0;
     for (auto word : iter) {
         EXPECT_EQ(word, words[i]);
         i++;
     }
+    EXPECT_EQ(i, words.size());
 }
 
 TEST(Trim, LTrim) {

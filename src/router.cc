@@ -39,10 +39,35 @@ Router::RouteNode::Type Router::RouteNode::parse_type(
     }
 }
 
-void Router::RouteNode::print(const int layer) const noexcept {
-    for (int i = 0; i < layer * 2; ++i) {
-        std::cout << ' ';
+void print_node_tree_segment(const uint8_t layer, const bool last) {
+    if (!last) {
+        if (layer > 0) {
+            std::cout << '|';
+
+            if (layer == 1) {
+                std::cout << '-';
+            } else {
+                for (int i = 1; i < layer * 2 - 2; ++i) {
+                    std::cout << ' ';
+                }
+                std::cout << "`-";
+            }
+            std::cout << ' ';
+        }
+    } else {
+        if (layer > 1) {
+            for (int i = 1; i < layer * 2 - 2; ++i) {
+                std::cout << ' ';
+            }
+        }
+        std::cout << "`- ";
     }
+}
+
+void Router::RouteNode::print(const uint8_t layer,
+                              const bool last) const noexcept {
+    print_node_tree_segment(layer, last);
+
     if (key.empty()) {
         std::cout << '/';
     } else {
@@ -64,8 +89,9 @@ void Router::RouteNode::print(const int layer) const noexcept {
     }
     std::cout << '\n';
 
-    for (const auto& child : children) {
-        child->print(layer + 1);
+    for (size_t i = 0; i < children.size(); ++i) {
+        children[i]->print(layer + 1,
+                           (layer == 0 && i == children.size() - 1) || last);
     }
 }
 
@@ -82,11 +108,14 @@ void Router::add_route(const std::string_view target, const Method method,
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
-    ++iter;
+    if (target.starts_with('/')) {
+        ++iter;
+    }
 
     for (std::string_view component :
          std::ranges::subrange(iter, split.end())) {
         const RouteNode::Type type = RouteNode::parse_type(component);
+
         component = RouteNode::parse_key(component);
 
         for (const auto& child : cur_node->children) {
@@ -96,9 +125,10 @@ void Router::add_route(const std::string_view target, const Method method,
             }
         }
 
-        cur_node->children.emplace_back(
-            std::make_unique<RouteNode>(type, component));
-        cur_node = cur_node->children.back().get();
+        cur_node =
+            cur_node->children
+                .emplace_back(std::make_unique<RouteNode>(type, component))
+                .get();
     skip:;
     };
 
@@ -112,7 +142,9 @@ std::pair<RequestHandler, Params> Router::route(
     RouteNode const* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
-    ++iter;
+    if (target.starts_with('/')) {
+        ++iter;
+    }
 
     for (const std::string_view component :
          std::ranges::subrange(iter, split.end())) {

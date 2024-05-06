@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "concurrency.hh"
-#include "io.hh"
+#include "server/io.hh"
 #include "server/request.hh"
 #include "server/response.hh"
 #include "server/router.hh"
@@ -46,8 +46,7 @@ void concat_headers(std::string& buf, const Headers& headers) {
     }
 }
 
-Result<Request, std::string_view> read_request(
-    const Connection& conn) {
+Result<Request, std::string_view> read_request(const Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
@@ -118,7 +117,8 @@ Result<Request, std::string_view> read_request(
         }
     }
 
-    return Request{method.value(), target.value(), std::move(headers), std::move(body)};
+    return Request{method.value(), target.value(), std::move(headers),
+                   std::move(body)};
 }
 
 void send_response(const Connection& conn, Response& resp) {
@@ -134,7 +134,8 @@ void send_response(const Connection& conn, Response& resp) {
     if (body_opt.has_value()) {
         resp.header("Content-Type", body_opt->type);
 
-        const std::string content_length = std::to_string(body_opt->data.size());
+        const std::string content_length =
+            std::to_string(body_opt->data.size());
         resp.header("Content-Length", content_length);
     }
 
@@ -151,8 +152,8 @@ void send_response(const Connection& conn, Response& resp) {
     conn.send(buf);
 }
 
-Result<void, std::string_view> handle_connection(
-    const Router& router, Connection connection) {
+Result<void, std::string_view> handle_connection(const Router& router,
+                                                 Connection connection) {
     auto req_res = read_request(connection);
     if (!req_res) {
         return Error{req_res.error()};
@@ -180,18 +181,22 @@ void Server::print_route_tree() const noexcept {
     router_.print_tree();
 }
 
-Result<void, std::string_view> Server::serve(
-    const std::string_view address, const uint16_t port) const noexcept {
+Result<void, std::string_view> Server::bind(const std::string_view address,
+                                            const uint16_t port) noexcept {
     auto sock_res = Socket::create(address, port);
     if (!sock_res) {
         return Error{sock_res.error()};
     }
-    Socket sock = std::move(sock_res.value());
+    socket_ = std::move(sock_res.value());
 
+    return {};
+}
+
+void Server::serve() const noexcept {
     concurrency::ThreadPool thrd_pool;
 
     for (;;) {
-        Connection connection = sock.accept();
+        Connection connection = socket_.accept();
         if (connection.is_valid()) {
             thrd_pool.async([this, conn = std::move(connection)]() mutable {
                 [[maybe_unused]] Result<void, std::string_view> result =
@@ -199,7 +204,5 @@ Result<void, std::string_view> Server::serve(
             });
         }
     }
-
-    return {};
 }
 }  // namespace http

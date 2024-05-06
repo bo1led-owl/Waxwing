@@ -30,16 +30,23 @@ class Request {
 
 public:
     template <typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
-    Request(Method method, T&& target,
-            const internal::Headers& headers, U&& body)
-        : method_{method}, target_{std::forward<T>(target)}, headers_{headers}, body_{std::forward<U>(body)} {}
+        requires(std::is_constructible_v<std::string, T>) &&
+                    (std::is_constructible_v<std::string, U>)
+    Request(Method method, T&& target, const internal::Headers& headers,
+            U&& body)
+        : method_{method},
+          target_{std::forward<T>(target)},
+          headers_{headers},
+          body_{std::forward<U>(body)} {}
 
     template <typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
-    Request(Method method, T&& target,
-            internal::Headers&& headers, U&& body)
-        : method_{method}, target_{std::forward<T>(target)}, headers_{std::move(headers)}, body_{std::forward<U>(body)} {}
+        requires(std::is_constructible_v<std::string, T>) &&
+                    (std::is_constructible_v<std::string, U>)
+    Request(Method method, T&& target, internal::Headers&& headers, U&& body)
+        : method_{method},
+          target_{std::forward<T>(target)},
+          headers_{std::move(headers)},
+          body_{std::forward<U>(body)} {}
 
     void set_params(const internal::Params& params) noexcept;
     void set_params(internal::Params&& params) noexcept;

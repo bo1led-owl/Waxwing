@@ -61,21 +61,22 @@ int main() {
     constexpr std::string_view HOST = "127.0.0.1";
     constexpr uint16_t PORT = 8080;
 
-    http::Server s;
-
+    http::Server s{};
     s.route("/hello", http::Method::Get, hello);
     s.route("/hello", http::Method::Post, hello_post);
     s.route("/user/:name", http::Method::Get, name);
-    s.route("/user/:name/*action", http::Method::Get, name_action);
+    s.route("/user/:name/*action/", http::Method::Get, name_action);
     s.route("/fact/:n", http::Method::Get, fact);
 
     s.print_route_tree();
 
-
-    const http::Result<void, std::string_view> serve_result = s.serve(HOST, PORT);
-    if (serve_result.has_error()) {
-        fmt::println("Error: {}", serve_result.error());
+    const http::Result<void, std::string_view> bind_result = s.bind(HOST, PORT);
+    if (bind_result.has_error()) {
+        fmt::println("Error: {}", bind_result.error());
         return EXIT_FAILURE;
     }
+
+    s.serve();
+
     return EXIT_SUCCESS;
 }

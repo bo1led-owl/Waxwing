@@ -28,6 +28,7 @@ class Router {
         };
 
         Type type;
+        bool slash_terminated;
         std::string_view key;
         std::unordered_map<Method, RequestHandler> handlers;
         std::vector<std::unique_ptr<RouteNode>> children;
@@ -39,7 +40,7 @@ class Router {
         static std::string_view parse_key(std::string_view key) noexcept;
         /// Parse path component type from its string representation
         static Type parse_type(std::string_view s) noexcept;
-        void print(int layer = 0) const noexcept;
+        void print(uint8_t layer = 0, bool last = false) const noexcept;
     };
 
     std::unique_ptr<RouteNode> root_;

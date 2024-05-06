@@ -89,16 +89,15 @@ public:
         std::string type;
         std::string data;
 
-        template<typename T>
+        template <typename T>
             requires(std::is_constructible_v<std::string, T>)
         Body(const ContentType type, T&& data)
             : type{format_content_type(type)}, data{std::forward<T>(data)} {}
 
-        template<typename T, typename U>
+        template <typename T, typename U>
             requires(std::is_constructible_v<std::string, T>) &&
-                (std::is_constructible_v<std::string, U>)
-        Body(T&& type, U&& data)
-            : type{type}, data{std::forward<T>(data)} {}
+                        (std::is_constructible_v<std::string, U>)
+        Body(T&& type, U&& data) : type{type}, data{std::forward<T>(data)} {}
     };
 
 private:
@@ -109,22 +108,24 @@ private:
 public:
     Response(const StatusCode code) noexcept : status_code_{code} {}
 
-    template<typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
+    template <typename T, typename U>
+        requires(std::is_constructible_v<std::string, T>) &&
+                (std::is_constructible_v<std::string, U>)
     Response& header(T&& key, U&& value) noexcept {
         headers_.insert_or_assign(std::forward<T>(key), std::forward<U>(value));
         return *this;
     }
 
-    template<typename T>
+    template <typename T>
         requires(std::is_constructible_v<std::string, T>)
     Response& body(ContentType type, T&& data) noexcept {
         body_ = Body{type, std::forward<T>(data)};
         return *this;
     }
 
-    template<typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) && (std::is_constructible_v<std::string, U>)
+    template <typename T, typename U>
+        requires(std::is_constructible_v<std::string, T>) &&
+                (std::is_constructible_v<std::string, U>)
     Response& body(T&& type, U&& data) noexcept {
         body_ = Body{std::forward<T>(type), std::forward<U>(data)};
         return *this;
