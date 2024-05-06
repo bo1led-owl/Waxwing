@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(server)
+project(waxwing)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_COLOR_DIAGNOSTICS ON)
@@ -34,5 +34,5 @@ if (ENABLE_TESTING)
 endif(ENABLE_TESTING)
 
 if (BUILD_EXAMPLE)
-  add_subdirectory(example)
+  add_subdirectory(examples)
 endif(BUILD_EXAMPLE)

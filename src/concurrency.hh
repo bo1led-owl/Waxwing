@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-namespace http {
+namespace waxwing {
 namespace internal {
 namespace concurrency {
 template <typename R, typename... Args>
@@ -162,4 +162,4 @@ public:
 };
 }  // namespace concurrency
 }  // namespace internal
-}  // namespace http
+}

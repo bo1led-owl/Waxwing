@@ -1,8 +1,8 @@
-#include "server/response.hh"
+#include "waxwing/response.hh"
 
 #include <sys/socket.h>
 
-namespace http {
+namespace waxwing {
 using namespace internal;
 
 std::string_view format_content_type(const ContentType content_type) noexcept {
@@ -153,15 +153,15 @@ std::string_view format_status(const StatusCode code) noexcept {
     }
 }
 
-Headers const& Response::get_headers() const& noexcept {
-    return headers_;
-}
-
-StatusCode Response::get_status() const noexcept {
+StatusCode Response::status() const noexcept {
     return status_code_;
 }
 
-std::optional<Response::Body> const& Response::get_body() const& noexcept {
+Headers & Response::headers() noexcept {
+    return headers_;
+}
+
+std::optional<Response::Body>& Response::body() noexcept {
     return body_;
 }
-}  // namespace http
+}

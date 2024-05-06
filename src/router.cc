@@ -1,4 +1,4 @@
-#include "server/router.hh"
+#include "waxwing/router.hh"
 
 #include <iostream>
 #include <ranges>
@@ -6,7 +6,7 @@
 
 #include "str_split.hh"
 
-namespace http {
+namespace waxwing {
 namespace internal {
 std::string_view Router::RouteNode::parse_key(
     const std::string_view key) noexcept {
@@ -182,4 +182,4 @@ std::pair<RequestHandler, Params> Router::route(
     return {handler_it->second, std::move(params)};
 }
 }  // namespace internal
-}  // namespace http
+}

@@ -1,11 +1,11 @@
-#include "server/request.hh"
+#include "waxwing/request.hh"
 
 #include <cassert>
 #include <utility>
 
 #include "str_util.hh"
 
-namespace http {
+namespace waxwing {
 using namespace internal;
 
 std::string_view format_method(const Method method) noexcept {
@@ -105,4 +105,4 @@ std::string_view Request::path_parameter(
 
     return result->second;
 }
-}  // namespace http
+}

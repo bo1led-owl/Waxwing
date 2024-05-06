@@ -1,4 +1,4 @@
-#include "server/io.hh"
+#include "waxwing/io.hh"
 
 #include <arpa/inet.h>
 #include <string.h>
@@ -11,11 +11,11 @@
 #include <string_view>
 #include <utility>
 
-#include "server/result.hh"
+#include "waxwing/result.hh"
 
 constexpr int MAX_CONNECTIONS = 512;
 
-namespace http {
+namespace waxwing {
 namespace internal {
 
 FileDescriptor::~FileDescriptor() {
@@ -92,4 +92,4 @@ Connection Socket::accept() const {
                     &clientaddr_len);
 }
 }  // namespace internal
-}  // namespace http
+}

@@ -5,7 +5,7 @@
 #include <optional>
 #include <string_view>
 
-namespace http {
+namespace waxwing {
 namespace str_util {
 template <typename Sep>
 class Split final {
@@ -104,4 +104,4 @@ constexpr Split<Sep> split(const std::string_view str, const Sep sep) {
     return Split(str, sep);
 }
 }  // namespace str_util
-}  // namespace http
+}

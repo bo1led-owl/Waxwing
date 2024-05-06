@@ -5,9 +5,9 @@
 #include <string>
 #include <string_view>
 
-#include "server/result.hh"
+#include "waxwing/result.hh"
 
-namespace http {
+namespace waxwing {
 namespace internal {
 class FileDescriptor {
 protected:
@@ -57,4 +57,4 @@ public:
     Connection accept() const;
 };
 }  // namespace internal
-}  // namespace http
+}  

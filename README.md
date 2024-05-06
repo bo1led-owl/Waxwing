@@ -1,4 +1,4 @@
-# Server
+# Waxwing
 A simple HTTP server with easy to use API
 
 ## Features

@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-namespace http {
+namespace waxwing {
 namespace str_util {
 constexpr std::string_view ltrim(const std::string_view s) {
     const std::string_view::iterator first_non_whitespace =
@@ -32,4 +32,4 @@ constexpr std::string to_lower(const std::string_view s) {
     return res;
 }
 }  // namespace str_util
-}  // namespace http
+}

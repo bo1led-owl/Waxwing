@@ -1,4 +1,4 @@
-#include "server/server.hh"
+#include "waxwing/server.hh"
 
 #include <charconv>
 #include <cstddef>
@@ -10,17 +10,17 @@
 #include <utility>
 
 #include "concurrency.hh"
-#include "server/io.hh"
-#include "server/request.hh"
-#include "server/response.hh"
-#include "server/router.hh"
-#include "server/types.hh"
+#include "waxwing/io.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
+#include "waxwing/router.hh"
+#include "waxwing/types.hh"
 #include "str_split.hh"
 #include "str_util.hh"
 
 constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
 
-namespace http {
+namespace waxwing {
 using namespace internal;
 
 namespace {
@@ -74,11 +74,15 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
 
     std::optional<Method> method = and_then(
         get_tok(), [](const std::string_view s) { return parse_method(s); });
-    const std::optional<std::string_view> target = get_tok();
+    std::optional<std::string_view> target = get_tok();
     const std::optional<std::string_view> http_version = get_tok();
 
     if (!method || !target || !http_version) {
         return Error{"Error parsing request line"};
+    }
+
+    if (!target->starts_with('/')) {
+        target = std::move(std::string("/").append(target.value()));
     }
 
     Headers headers;
@@ -125,22 +129,23 @@ void send_response(const Connection& conn, Response& resp) {
     std::string buf;
 
     buf += "HTTP/1.1 ";
-    buf += format_status(resp.get_status());
+    buf += format_status(resp.status());
     buf += "\r\n";
 
-    resp.header("Connection", "Close");
+    Headers& headers = resp.headers();
+    headers["Connection"] = "Close";
 
-    const std::optional<Response::Body>& body_opt = resp.get_body();
+    const std::optional<Response::Body>& body_opt = resp.body();
     if (body_opt.has_value()) {
-        resp.header("Content-Type", body_opt->type);
+        headers["Content-Type"] = body_opt->type;
 
         const std::string content_length =
             std::to_string(body_opt->data.size());
-        resp.header("Content-Length", content_length);
+        headers["Content-Length"] = content_length;
     }
 
     // push all of the headers into buf
-    concat_headers(buf, resp.get_headers());
+    concat_headers(buf, headers);
 
     // empty line is required even if the body is empty
     buf += "\r\n";
@@ -165,14 +170,14 @@ Result<void, std::string_view> handle_connection(const Router& router,
         router.route(req.target(), req.method());
 
     req.set_params(route.second);
-    Response resp = route.first(req);
-    send_response(connection, resp);
+    std::unique_ptr<Response> resp = route.first(req);
+    send_response(connection, *resp);
 
     return {};
 }
 }  // namespace
 
-void Server::route(const std::string_view target, const Method method,
+void Server::route(const Method method, const std::string_view target,
                    const RequestHandler& handler) noexcept {
     router_.add_route(target, method, handler);
 }
@@ -205,4 +210,4 @@ void Server::serve() const noexcept {
         }
     }
 }
-}  // namespace http
+}

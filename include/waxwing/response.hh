@@ -1,12 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 
 #include "types.hh"
 
-namespace http {
+namespace waxwing {
 enum class ContentType {
     Text,
     Html,
@@ -106,33 +107,59 @@ private:
     std::optional<Body> body_;
 
 public:
-    Response(const StatusCode code) noexcept : status_code_{code} {}
+    Response(const StatusCode code, internal::Headers&& headers, std::optional<Body>&& body) noexcept : status_code_{code}, headers_{std::move(headers)}, body_{std::move(body)} {}
 
-    template <typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) &&
-                (std::is_constructible_v<std::string, U>)
-    Response& header(T&& key, U&& value) noexcept {
-        headers_.insert_or_assign(std::forward<T>(key), std::forward<U>(value));
-        return *this;
+    Response(const Response&) = delete;
+    Response& operator=(const Response&) = delete;
+
+    Response(Response&& rhs) {
+        std::swap(status_code_, rhs.status_code_);
+        std::swap(headers_, rhs.headers_);
+        std::swap(body_, rhs.body_);
     }
 
-    template <typename T>
-        requires(std::is_constructible_v<std::string, T>)
-    Response& body(ContentType type, T&& data) noexcept {
-        body_ = Body{type, std::forward<T>(data)};
-        return *this;
-    }
-
-    template <typename T, typename U>
-        requires(std::is_constructible_v<std::string, T>) &&
-                (std::is_constructible_v<std::string, U>)
-    Response& body(T&& type, U&& data) noexcept {
-        body_ = Body{std::forward<T>(type), std::forward<U>(data)};
-        return *this;
-    }
-
-    StatusCode get_status() const noexcept;
-    internal::Headers const& get_headers() const& noexcept;
-    std::optional<Body> const& get_body() const& noexcept;
+    StatusCode status() const noexcept;
+    internal::Headers& headers() noexcept;
+    std::optional<Body>& body() noexcept;
 };
-}  // namespace http
+
+class ResponseBuilder final {
+    StatusCode status_code_;
+    internal::Headers headers_;
+    std::optional<Response::Body> body_;
+
+public:
+    ResponseBuilder(StatusCode code) noexcept : status_code_{code} {}
+
+    ResponseBuilder(const ResponseBuilder&) = delete;
+    ResponseBuilder& operator=(const ResponseBuilder&) = delete;
+    
+    template <typename S1, typename S2>
+        requires(std::is_constructible_v<std::string, S1>) &&
+                (std::is_constructible_v<std::string, S2>)
+    ResponseBuilder& header(S1&& key, S2&& value) && noexcept {
+        headers_.insert_or_assign(std::forward<S1>(key),
+                                  std::forward<S2>(value));
+        return *this;
+    }
+
+    template <typename S>
+        requires(std::is_constructible_v<std::string, S>)
+    ResponseBuilder& body(ContentType type, S&& data) && noexcept {
+        body_ = Response::Body{type, std::forward<S>(data)};
+        return *this;
+    }
+
+    template <typename S1, typename S2>
+        requires(std::is_constructible_v<std::string, S1>) &&
+                (std::is_constructible_v<std::string, S2>)
+    ResponseBuilder& body(S1&& type, S2&& data) && noexcept {
+        body_ = Response::Body{std::forward<S1>(type), std::forward<S2>(data)};
+        return *this;
+    }
+
+    std::unique_ptr<Response> build() {
+        return std::make_unique<Response>(status_code_, std::move(headers_), std::move(body_));
+    }
+};
+}  

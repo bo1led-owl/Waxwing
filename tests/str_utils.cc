@@ -4,7 +4,7 @@
 #include "str_util.hh"
 
 namespace {
-using namespace http::str_util;
+using namespace waxwing::str_util;
 
 TEST(Split, CharacterSeparatorBasic) {
     auto iter = split("hello world", ' ');

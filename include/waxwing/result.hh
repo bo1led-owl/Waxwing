@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <variant>
 
-namespace http {
+namespace waxwing {
 template <typename E>
 class [[nodiscard]] Error;
 template <typename T, typename E>
@@ -76,8 +76,7 @@ public:
         : has_value_{true}, value_{} {}
 
     template <typename U = T>
-        requires(!std::is_same_v<std::remove_cvref_t<U>, Result> &&
-                 std::is_constructible_v<T, U>)
+        requires(!result::is_result<U>) && (std::is_constructible_v<T, U>)
     explicit(!std::is_convertible_v<U, T>) Result(U&& value)
         : has_value_{true}, value_{std::forward<U>(value)} {}
 
@@ -222,4 +221,4 @@ auto map(std::optional<T> opt, F f) {
     }
     return std::nullopt;
 }
-}  // namespace http
+}  

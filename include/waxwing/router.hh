@@ -11,13 +11,13 @@
 #include "response.hh"
 #include "types.hh"
 
-namespace http {
+namespace waxwing {
 namespace internal {
-using RequestHandler = std::function<Response(Request const&)>;
+using RequestHandler = std::function<std::unique_ptr<Response>(Request const&)>;
 
 class Router {
     constexpr static auto default_404_handler = [](const Request&) {
-        return Response(StatusCode::NotFound);
+        return ResponseBuilder(StatusCode::NotFound).build();
     };
 
     struct RouteNode {
@@ -28,10 +28,10 @@ class Router {
         };
 
         Type type;
-        bool slash_terminated;
         std::string_view key;
         std::unordered_map<Method, RequestHandler> handlers;
         std::vector<std::unique_ptr<RouteNode>> children;
+        std::vector<uint8_t> available_path_lengths;
 
         RouteNode(const Type type, const std::string_view key)
             : type{type}, key{parse_key(key)} {}
@@ -64,4 +64,4 @@ public:
     void print_tree() const noexcept;
 };
 }  // namespace internal
-}  // namespace http
+}  
