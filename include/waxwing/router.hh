@@ -52,8 +52,9 @@ public:
                                             "")},
           not_found_handler_{not_found_handler} {}
 
-    /// Insert new route into the tree
-    void add_route(std::string_view target, Method method,
+    /// Insert new route into the tree, returns whether the new value was
+    /// inserted
+    bool add_route(std::string_view target, Method method,
                    const RequestHandler& handler) noexcept;
 
     /// Parse given target and return corresponding request handler and parsed

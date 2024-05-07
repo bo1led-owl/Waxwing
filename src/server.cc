@@ -178,9 +178,16 @@ void handle_connection(const Router& router, Connection connection) {
 }
 }  // namespace
 
-void Server::route(const Method method, const std::string_view target,
+bool Server::route(const Method method, const std::string_view target,
                    const RequestHandler& handler) noexcept {
-    router_.add_route(target, method, handler);
+    const bool result = router_.add_route(target, method, handler);
+
+    if (!result) {
+        spdlog::warn(
+            "handler for `{}` on `{}` was already present, the new one is ignored",
+            format_method(method), target);
+    }
+    return result;
 }
 
 void Server::print_route_tree() const noexcept {

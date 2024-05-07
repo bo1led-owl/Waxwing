@@ -103,7 +103,7 @@ void Router::print_tree() const noexcept {
     root_->print();
 }
 
-void Router::add_route(const std::string_view target, const Method method,
+bool Router::add_route(const std::string_view target, const Method method,
                        const RequestHandler& handler) noexcept {
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
@@ -132,7 +132,14 @@ void Router::add_route(const std::string_view target, const Method method,
     skip:;
     };
 
-    cur_node->handlers[method] = handler;
+    auto insertion_it = cur_node->handlers.find(method);
+
+    if (insertion_it == cur_node->handlers.end()) {
+        cur_node->handlers.emplace(method, handler);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 std::pair<RequestHandler, Params> Router::route(

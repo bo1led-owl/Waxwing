@@ -16,7 +16,7 @@ class Server {
     internal::Socket socket_;
 
 public:
-    void route(Method method, std::string_view target,
+    bool route(Method method, std::string_view target,
                const internal::RequestHandler& handler) noexcept;
 
     Result<void, std::string> bind(std::string_view address,
