@@ -32,4 +32,4 @@ constexpr std::string to_lower(const std::string_view s) {
     return res;
 }
 }  // namespace str_util
-}
+}  // namespace waxwing

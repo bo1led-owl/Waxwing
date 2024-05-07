@@ -162,4 +162,4 @@ public:
 };
 }  // namespace concurrency
 }  // namespace internal
-}
+}  // namespace waxwing

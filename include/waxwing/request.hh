@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string_view>
+#include <utility>
 
 #include "types.hh"
 
@@ -30,16 +31,24 @@ class Request {
 
 public:
     Request(const Request&) = delete;
-    Request& operator= (const Request&) = delete;
+    Request& operator=(const Request&) = delete;
 
-    Request(Request&& rhs) noexcept {
+    Request(Request&& rhs) noexcept
+        : method_{std::move(rhs.method_)},
+          target_{std::move(rhs.target_)},
+          headers_{std::move(rhs.headers_)},
+          params_{std::move(rhs.params_)},
+          body_{std::move(rhs.body_)} {}
+
+    Request& operator=(Request&& rhs) noexcept {
         std::swap(method_, rhs.method_);
         std::swap(target_, rhs.target_);
         std::swap(headers_, rhs.headers_);
         std::swap(params_, rhs.params_);
         std::swap(body_, rhs.body_);
+        return *this;
     }
-    
+
     template <typename S1, typename S2>
         requires(std::is_constructible_v<std::string, S1>) &&
                     (std::is_constructible_v<std::string, S2>)
@@ -68,4 +77,4 @@ public:
     std::optional<std::string_view> header(std::string_view key) const noexcept;
     std::string_view path_parameter(std::string_view key) const noexcept;
 };
-} 
+}  // namespace waxwing

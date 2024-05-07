@@ -9,6 +9,7 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 #include "waxwing/result.hh"
@@ -46,13 +47,11 @@ size_t Connection::send(const std::string_view s) const {
     return ::send(fd_, s.data(), s.size(), 0);
 }
 
-Result<Socket, std::string_view> Socket::create(const std::string_view address,
-                                                const uint16_t port) {
-    // `strerror` here is OK because this code is used only in the
-    // single-threaded part of the code
+Result<Socket, std::string> Socket::create(const std::string_view address,
+                                           const uint16_t port) {
     const int fd = ::socket(PF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        return Error{::strerror(errno)};
+        return Error{std::make_error_code(std::errc{errno}).message()};
     }
 
     const int option = 1;
@@ -63,14 +62,14 @@ Result<Socket, std::string_view> Socket::create(const std::string_view address,
                      .sin_addr = {.s_addr = ::htonl(INADDR_ANY)},
                      .sin_zero = {}};
     if (inet_pton(AF_INET, address.data(), &addr.sin_addr.s_addr) < 0) {
-        return Error{::strerror(errno)};
+        return Error{std::make_error_code(std::errc{errno}).message()};
     }
 
     if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-        return Error{::strerror(errno)};
+        return Error{std::make_error_code(std::errc{errno}).message()};
     }
     if (::listen(fd, MAX_CONNECTIONS) < 0) {
-        return Error{::strerror(errno)};
+        return Error{std::make_error_code(std::errc{errno}).message()};
     }
 
     return Socket{fd};
@@ -92,4 +91,4 @@ Connection Socket::accept() const {
                     &clientaddr_len);
 }
 }  // namespace internal
-}
+}  // namespace waxwing

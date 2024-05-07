@@ -4,7 +4,6 @@
 
 namespace waxwing {
 using namespace internal;
-
 std::string_view format_content_type(const ContentType content_type) noexcept {
     switch (content_type) {
         case ContentType::Text:
@@ -157,11 +156,11 @@ StatusCode Response::status() const noexcept {
     return status_code_;
 }
 
-Headers & Response::headers() noexcept {
+Headers& Response::headers() noexcept {
     return headers_;
 }
 
 std::optional<Response::Body>& Response::body() noexcept {
     return body_;
 }
-}
+}  // namespace waxwing

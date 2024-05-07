@@ -17,10 +17,11 @@ public:
     void route(Method method, std::string_view target,
                const internal::RequestHandler& handler) noexcept;
 
-    Result<void, std::string_view> bind(std::string_view address,
-                                        uint16_t port) noexcept;
+    Result<void, std::string> bind(std::string_view address,
+                                   uint16_t port) noexcept;
 
     void serve() const noexcept;
     void print_route_tree() const noexcept;
+    void disable_logging() noexcept;
 };
-};  
+};  // namespace waxwing

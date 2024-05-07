@@ -1,22 +1,23 @@
 #include "waxwing/server.hh"
 
+#include <spdlog/spdlog.h>
+
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include "concurrency.hh"
+#include "str_split.hh"
+#include "str_util.hh"
 #include "waxwing/io.hh"
 #include "waxwing/request.hh"
 #include "waxwing/response.hh"
 #include "waxwing/router.hh"
 #include "waxwing/types.hh"
-#include "str_split.hh"
-#include "str_util.hh"
 
 constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
 
@@ -50,7 +51,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
-    const auto line_split = str_util::split(buf, "\r\n");
+    const str_util::Split line_split = str_util::split(buf, "\r\n");
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
@@ -68,7 +69,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
             result = *token_iter;
         }
 
-        token_iter++;
+        ++token_iter;
         return result;
     };
 
@@ -80,6 +81,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
     if (!method || !target || !http_version) {
         return Error{"Error parsing request line"};
     }
+    ++line_iter;
 
     if (!target->starts_with('/')) {
         target = std::move(std::string("/").append(target.value()));
@@ -87,39 +89,38 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
 
     Headers headers;
 
-    std::optional<size_t> content_length = std::nullopt;
-    for (const std::string_view line :
-         std::ranges::subrange(line_iter, line_split.end())) {
+    for (; line_iter != line_split.end(); ++line_iter) {
+        const std::string_view line = *line_iter;
         if (line.empty()) {
-            // request body starts here, breaking
             break;
         }
+
         const std::pair<std::string, std::string> header = parse_header(line);
         headers.insert_or_assign(std::string{header.first},
                                  std::string{header.second});
-
-        if (header.first == "content-length") {
-            size_t len;
-            const auto [_, ec] = std::from_chars(
-                header.second.begin().base(), header.second.end().base(), len);
-
-            if (ec != std::errc{}) {
-                return Error{"Error parsing `Content-Length`"};
-            }
-
-            content_length = len;
-        }
     };
 
     std::string body{line_iter.remaining()};
 
-    if (content_length.has_value()) {
-        // content-length header is present
-        body.reserve(body.size() + content_length.value());
-        while (content_length > body.size()) {
-            conn.recv(body, content_length.value() - body.size());
+    size_t content_length = 0;
+    if (headers.contains("content-length")) {
+        const auto [_, ec] = std::from_chars(
+            headers["content-length"].begin().base(),
+            headers["content-length"].end().base(), content_length);
+
+        if (ec != std::errc{}) {
+            return Error{"Error parsing `Content-Length`"};
         }
     }
+
+    if (content_length > body.size()) {
+        // content-length header is present
+        body.reserve(body.size() + content_length);
+        while (content_length > body.size()) {
+            conn.recv(body, content_length - body.size());
+        }
+    }
+    body.resize(content_length);
 
     return Request{method.value(), target.value(), std::move(headers),
                    std::move(body)};
@@ -157,11 +158,11 @@ void send_response(const Connection& conn, Response& resp) {
     conn.send(buf);
 }
 
-Result<void, std::string_view> handle_connection(const Router& router,
-                                                 Connection connection) {
+void handle_connection(const Router& router, Connection connection) {
     auto req_res = read_request(connection);
     if (!req_res) {
-        return Error{req_res.error()};
+        spdlog::error("{}", req_res.error());
+        return;
     }
 
     Request& req = req_res.value();
@@ -171,9 +172,9 @@ Result<void, std::string_view> handle_connection(const Router& router,
 
     req.set_params(route.second);
     std::unique_ptr<Response> resp = route.first(req);
+    spdlog::info("{} {} -> {}", format_method(req_res->method()),
+                 req_res->target(), format_status(resp->status()));
     send_response(connection, *resp);
-
-    return {};
 }
 }  // namespace
 
@@ -186,14 +187,15 @@ void Server::print_route_tree() const noexcept {
     router_.print_tree();
 }
 
-Result<void, std::string_view> Server::bind(const std::string_view address,
-                                            const uint16_t port) noexcept {
+Result<void, std::string> Server::bind(const std::string_view address,
+                                       const uint16_t port) noexcept {
     auto sock_res = Socket::create(address, port);
     if (!sock_res) {
-        return Error{sock_res.error()};
+        return Error{std::move(sock_res.error())};
     }
     socket_ = std::move(sock_res.value());
 
+    spdlog::info("binded to {}:{}", address, port);
     return {};
 }
 
@@ -204,10 +206,9 @@ void Server::serve() const noexcept {
         Connection connection = socket_.accept();
         if (connection.is_valid()) {
             thrd_pool.async([this, conn = std::move(connection)]() mutable {
-                [[maybe_unused]] Result<void, std::string_view> result =
-                    handle_connection(router_, std::move(conn));
+                handle_connection(router_, std::move(conn));
             });
         }
     }
 }
-}
+}  // namespace waxwing

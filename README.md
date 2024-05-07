@@ -1,5 +1,8 @@
 # Waxwing
-A simple HTTP server with easy to use API
+A simple HTTP server with easy to use API, named after a beautiful bird
+
+## Dependencies
+`spdlog` for logging, so it is configurable via its interface
 
 ## Features
 - No exceptions

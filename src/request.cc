@@ -105,4 +105,4 @@ std::string_view Request::path_parameter(
 
     return result->second;
 }
-}
+}  // namespace waxwing

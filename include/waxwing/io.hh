@@ -45,8 +45,8 @@ class Socket final : public FileDescriptor {
 public:
     Socket() : FileDescriptor{-1} {}
 
-    static Result<Socket, std::string_view> create(std::string_view address,
-                                                   uint16_t port);
+    static Result<Socket, std::string> create(std::string_view address,
+                                              uint16_t port);
 
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
@@ -57,4 +57,4 @@ public:
     Connection accept() const;
 };
 }  // namespace internal
-}  
+}  // namespace waxwing

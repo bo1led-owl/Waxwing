@@ -107,7 +107,11 @@ private:
     std::optional<Body> body_;
 
 public:
-    Response(const StatusCode code, internal::Headers&& headers, std::optional<Body>&& body) noexcept : status_code_{code}, headers_{std::move(headers)}, body_{std::move(body)} {}
+    Response(const StatusCode code, internal::Headers&& headers,
+             std::optional<Body>&& body) noexcept
+        : status_code_{code},
+          headers_{std::move(headers)},
+          body_{std::move(body)} {}
 
     Response(const Response&) = delete;
     Response& operator=(const Response&) = delete;
@@ -133,7 +137,7 @@ public:
 
     ResponseBuilder(const ResponseBuilder&) = delete;
     ResponseBuilder& operator=(const ResponseBuilder&) = delete;
-    
+
     template <typename S1, typename S2>
         requires(std::is_constructible_v<std::string, S1>) &&
                 (std::is_constructible_v<std::string, S2>)
@@ -159,7 +163,8 @@ public:
     }
 
     std::unique_ptr<Response> build() {
-        return std::make_unique<Response>(status_code_, std::move(headers_), std::move(body_));
+        return std::make_unique<Response>(status_code_, std::move(headers_),
+                                          std::move(body_));
     }
 };
-}  
+}  // namespace waxwing

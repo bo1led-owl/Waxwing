@@ -18,7 +18,7 @@ int main() {
     waxwing::Server s{};
     s.route(waxwing::Method::Get, "/hello", hello_world);
 
-    const waxwing::Result<void, std::string_view> bind_result = s.bind(HOST, PORT);
+    const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
         std::cerr << "Error: " << bind_result.error();
         return EXIT_FAILURE;

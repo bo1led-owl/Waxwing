@@ -7,7 +7,7 @@ set(CMAKE_COLOR_DIAGNOSTICS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_EXAMPLE "Build example" ON)
+option(BUILD_EXAMPLES "Build examples targets" ON)
 option(ENABLE_TESTING "Build testing target" ON)
 
 add_library(${PROJECT_NAME} STATIC)
@@ -29,10 +29,13 @@ target_include_directories(${PROJECT_NAME}
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/server.hh)
 
+find_package(spdlog REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+
 if (ENABLE_TESTING)
   add_subdirectory(tests)
 endif(ENABLE_TESTING)
 
-if (BUILD_EXAMPLE)
+if (BUILD_EXAMPLES)
   add_subdirectory(examples)
-endif(BUILD_EXAMPLE)
+endif(BUILD_EXAMPLES)

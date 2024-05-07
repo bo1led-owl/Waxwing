@@ -8,19 +8,22 @@
 namespace waxwing {
 namespace str_util {
 template <typename Sep>
+    requires(std::convertible_to<Sep, std::string_view> ||
+             std::convertible_to<Sep, char>)
 class Split final {
-    constexpr static size_t length(const std::string_view s) {
-        return s.size();
-    }
-    constexpr static size_t length(const char) {
+    static size_t length(const char) {
         return 1;
+    }
+
+    static size_t length(const std::string_view& s) {
+        return s.size();
     }
 
     std::string_view source_;
     Sep sep_;
 
 public:
-    struct IteratorTerminator final {};
+    struct IteratorSentinel final {};
 
     class Iterator final {
         friend class Split;
@@ -29,7 +32,7 @@ public:
         std::optional<std::string_view> cur_;
         Sep sep_;
 
-        constexpr Iterator(const std::string_view src, const Sep sep)
+        constexpr Iterator(std::string_view src, Sep sep)
             : remaining_{src}, sep_{sep} {
             ++(*this);
         }
@@ -37,8 +40,8 @@ public:
     public:
         using difference_type = std::ptrdiff_t;
         using value_type = std::string_view;
-        using pointer = const std::string_view*;
-        using reference = const std::string_view&;
+        using pointer = value_type const*;
+        using reference = value_type const&;
         using iterator_category = std::forward_iterator_tag;
 
         constexpr Iterator& operator++() {
@@ -65,11 +68,11 @@ public:
             return prev;
         }
 
-        constexpr value_type operator*() {
+        constexpr value_type operator*() const {
             return cur_.value();
         }
 
-        constexpr pointer operator->() {
+        constexpr pointer operator->() const {
             return &cur_.value();
         }
 
@@ -78,7 +81,7 @@ public:
                    sep_ == other.sep_;
         }
 
-        constexpr bool operator==(const IteratorTerminator&) const noexcept {
+        constexpr bool operator==(const IteratorSentinel&) const noexcept {
             return cur_ == std::nullopt;
         }
 
@@ -94,14 +97,18 @@ public:
         return Iterator{source_, sep_};
     }
 
-    constexpr IteratorTerminator end() const {
-        return IteratorTerminator{};
+    constexpr IteratorSentinel end() const {
+        return IteratorSentinel{};
     }
 };
 
-template <typename Sep>
-constexpr Split<Sep> split(const std::string_view str, const Sep sep) {
+constexpr Split<std::string_view> split(const std::string_view str,
+                                        const std::string_view sep) {
+    return Split(str, sep);
+}
+
+constexpr Split<char> split(const std::string_view str, const char sep) {
     return Split(str, sep);
 }
 }  // namespace str_util
-}
+}  // namespace waxwing

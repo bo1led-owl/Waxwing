@@ -64,4 +64,4 @@ public:
     void print_tree() const noexcept;
 };
 }  // namespace internal
-}  
+}  // namespace waxwing

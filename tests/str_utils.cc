@@ -78,6 +78,23 @@ TEST(Split, MultiCharacterSeparatorSingleItem) {
     EXPECT_EQ(i, words.size());
 }
 
+TEST(Split, CharacterSeparatorRemaining) {
+    auto iter =
+        split("The quick brown fox jumps over the lazy dog", ' ').begin();
+    ++iter;
+    ++iter;
+    EXPECT_EQ(iter.remaining(), "fox jumps over the lazy dog");
+}
+
+TEST(Split, MultiCharacterSeparatorRemaining) {
+    auto iter =
+        split("The  quick  brown  fox  jumps  over  the  lazy  dog", "  ")
+            .begin();
+    ++iter;
+    ++iter;
+    EXPECT_EQ(iter.remaining(), "fox  jumps  over  the  lazy  dog");
+}
+
 TEST(Trim, LTrim) {
     const std::vector<std::pair<std::string_view, std::string_view>> tests{
         {ltrim(" \t\nhello "), "hello "},

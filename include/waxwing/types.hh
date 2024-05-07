@@ -28,4 +28,4 @@ using Headers =
 using Params =
     std::unordered_map<std::string, std::string, string_hash, std::equal_to<>>;
 }  // namespace internal
-}  
+}  // namespace waxwing
