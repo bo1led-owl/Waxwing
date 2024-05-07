@@ -1,7 +1,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <string_view>
 
@@ -37,10 +36,11 @@ int main() {
     const waxwing::Result<void, std::string> bind_result =
         s.bind(HOST, PORT);
     if (bind_result.has_error()) {
-        std::cerr << "Error: " << bind_result.error();
+        spdlog::error("Error: {}", bind_result.error());
         return EXIT_FAILURE;
     }
 
+    spdlog::info("serving on {}:{}", HOST, PORT);
     s.serve();
 
     return EXIT_SUCCESS;

@@ -2,9 +2,10 @@
 A simple HTTP server with easy to use API, named after a beautiful bird
 
 ## Dependencies
-`spdlog` for logging, so it is configurable via its interface
+`spdlog` for logging
 
 ## Features
+- Logging configurable via `spdlog` native API
 - No exceptions
 - No boilerplate
 - Request header parsing

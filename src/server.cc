@@ -195,7 +195,6 @@ Result<void, std::string> Server::bind(const std::string_view address,
     }
     socket_ = std::move(sock_res.value());
 
-    spdlog::info("binded to {}:{}", address, port);
     return {};
 }
 

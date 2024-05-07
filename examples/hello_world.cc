@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
 #include <string_view>
 
 #include "waxwing/server.hh"
@@ -20,10 +19,11 @@ int main() {
 
     const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
-        std::cerr << "Error: " << bind_result.error();
+        spdlog::error("Error: {}", bind_result.error());
         return EXIT_FAILURE;
     }
 
+    spdlog::info("serving on {}:{}", HOST, PORT);
     s.serve();
 
     return EXIT_SUCCESS;
