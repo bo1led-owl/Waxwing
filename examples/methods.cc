@@ -27,7 +27,7 @@ int main() {
 
     const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
-        spdlog::error("Error: {}", bind_result.error());
+        spdlog::error(bind_result.error());
         return EXIT_FAILURE;
     }
 

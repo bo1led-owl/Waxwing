@@ -35,13 +35,12 @@ Connection& Connection::operator=(Connection&& rhs) noexcept {
 }
 
 size_t Connection::recv(std::string& s, const size_t n) const {
-    const size_t prev_size = s.size();
+    std::vector<char> buffer(n);
 
-    s.reserve(s.size() + n);
+    const size_t bytes_read = ::recv(fd_, buffer.data(), n * sizeof(char), 0);
 
-    const size_t bytes_read = ::recv(fd_, &s[prev_size], n * sizeof(char), 0);
-
-    s.resize(prev_size + bytes_read);
+    buffer.resize(bytes_read);
+    s.append(buffer.cbegin(), buffer.cend());
     return bytes_read;
 }
 

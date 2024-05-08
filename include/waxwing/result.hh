@@ -14,10 +14,16 @@ class [[nodiscard(
     "`Result` object is ignored, it might have been an error")]] Result;
 
 namespace result {
+template <typename T>
+static constexpr bool is_optional = false;
+template <typename T>
+static constexpr bool is_optional<std::optional<T>> = true;
+
 template <typename G>
 static constexpr bool is_error = false;
 template <typename G>
 static constexpr bool is_error<Error<G>> = true;
+
 template <typename U>
 static constexpr bool is_result = false;
 template <typename U, typename G>
@@ -229,21 +235,23 @@ public:
     }
 };
 
-template <
-    typename T, typename F,
-    typename U = std::remove_cvref_t<std::invoke_result_t<F, T&>>::value_type>
-constexpr std::optional<U> and_then(std::optional<T> opt, F&& f) {
+template <typename T, typename F>
+    requires(result::is_optional<std::remove_cv_t<std::invoke_result_t<F, T&>>>)
+constexpr auto and_then(std::optional<T> opt, F&& f) {
+    using U = std::remove_cv_t<std::invoke_result_t<F, T&>>;
     if (opt.has_value()) {
-        return std::invoke(std::forward<F>(f), opt.value());
+        return std::invoke(f, *opt);
+    } else {
+        return U{};
     }
-    return std::nullopt;
 }
 
 template <typename T, typename F>
 constexpr auto map(std::optional<T> opt, F f) {
+    using U = std::remove_cv_t<std::invoke_result_t<F, T&>>;
     if (opt.has_value()) {
         return std::optional{std::invoke(f, opt.value())};
     }
-    return std::nullopt;
+    return std::optional<U>{};
 }
 }  // namespace waxwing

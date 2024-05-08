@@ -182,7 +182,7 @@ std::pair<RequestHandler, std::vector<std::string_view>> Router::route(
 
     const auto handler_it = cur_node->handlers.find(method);
     if (handler_it == cur_node->handlers.end()) {
-        return {not_found_handler_, std::move(params)};
+        return {not_found_handler_, {}};
     }
 
     return {handler_it->second, std::move(params)};

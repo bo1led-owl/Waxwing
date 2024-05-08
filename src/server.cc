@@ -46,15 +46,15 @@ void concat_headers(std::string& buf, const Headers& headers) {
     }
 }
 
-std::string read_body(const Connection& conn, std::string_view initial) {
+std::string read_body(const Connection& conn, std::string_view initial,
+                      const size_t length) {
     constexpr size_t CHUNK_SIZE = 1024;
 
     std::string body{initial};
-
-    size_t bytes_read = 0;
+    size_t bytes_read = initial.size();
     do {
-        bytes_read = conn.recv(body, CHUNK_SIZE);
-    } while (bytes_read > 0);
+        bytes_read += conn.recv(body, CHUNK_SIZE);
+    } while (bytes_read < length);
 
     return body;
 }
@@ -64,8 +64,7 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
-    const str_util::Split line_split =
-        str_util::split(std::string_view{buf.cbegin(), buf.cend()}, "\r\n");
+    const str_util::Split line_split = str_util::split(buf, "\r\n");
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
@@ -89,7 +88,8 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
 
     std::optional<HttpMethod> method = and_then(
         get_tok(), [](const std::string_view s) { return parse_method(s); });
-    std::optional<std::string_view> target = get_tok();
+    std::optional<std::string> target =
+        map(get_tok(), [](std::string_view s) { return std::string{s}; });
     const std::optional<std::string_view> http_version = get_tok();
 
     if (!method || !target || !http_version) {
@@ -103,6 +103,7 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
 
     RequestBuilder builder{method.value(), std::move(target.value())};
 
+    std::optional<size_t> content_length{};
     for (; line_iter != line_split.end(); ++line_iter) {
         const std::string_view line = *line_iter;
         if (line.empty()) {
@@ -110,6 +111,14 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
         }
 
         auto [key, value] = parse_header(line);
+
+        if (key == "Content-Length") {
+            size_t len;
+            if (std::from_chars(key.cbegin().base(), key.cend().base(), len)
+                    .ec == std::errc{}) {
+                content_length = len;
+            }
+        }
         builder.header(std::move(key), std::move(value));
     };
 
@@ -119,7 +128,12 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
         method.value() == HttpMethod::Patch ||
         method.value() == HttpMethod::Post ||
         method.value() == HttpMethod::Put) {
-        builder.body(read_body(conn, line_iter.remaining()));
+        if (content_length.has_value()) {
+            builder.body(
+                read_body(conn, line_iter.remaining(), content_length.value()));
+        } else {
+            builder.body(line_iter.remaining());
+        }
     }
 
     return builder.build();
@@ -180,7 +194,7 @@ bool Server::route(
     const std::function<std::unique_ptr<Response>()>& handler) noexcept {
     const bool result = router_.add_route(
         target, method,
-        [&handler](const Request&, const Params) { return handler(); });
+        [handler](const Request&, const Params) { return handler(); });
 
     if (!result) {
         spdlog::warn(
@@ -197,7 +211,7 @@ bool Server::route(
         handler) noexcept {
     const bool result = router_.add_route(
         target, method,
-        [&handler](const Request& req, const Params) { return handler(req); });
+        [handler](const Request& req, const Params) { return handler(req); });
 
     if (!result) {
         spdlog::warn(
@@ -212,7 +226,7 @@ bool Server::route(const HttpMethod method, const std::string_view target,
                    const std::function<std::unique_ptr<Response>(const Params)>&
                        handler) noexcept {
     const bool result = router_.add_route(
-        target, method, [&handler](const Request&, const Params params) {
+        target, method, [handler](const Request&, const Params params) {
             return handler(params);
         });
 
