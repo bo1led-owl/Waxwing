@@ -13,10 +13,12 @@
 
 namespace waxwing {
 namespace internal {
-using RequestHandler = std::function<std::unique_ptr<Response>(Request const&)>;
+using RequestHandler =
+    std::function<std::unique_ptr<Response>(Request const&, const Params)>;
 
 class Router {
-    constexpr static auto default_404_handler = [](const Request&) {
+    constexpr static auto default_404_handler = [](const Request&,
+                                                   const Params&) {
         return ResponseBuilder(StatusCode::NotFound).build();
     };
 
@@ -29,7 +31,7 @@ class Router {
 
         Type type;
         std::string_view key;
-        std::unordered_map<Method, RequestHandler> handlers;
+        std::unordered_map<HttpMethod, RequestHandler> handlers;
         std::vector<std::unique_ptr<RouteNode>> children;
         std::vector<uint8_t> available_path_lengths;
 
@@ -54,13 +56,14 @@ public:
 
     /// Insert new route into the tree, returns whether the new value was
     /// inserted
-    bool add_route(std::string_view target, Method method,
+    bool add_route(std::string_view target, HttpMethod method,
                    const RequestHandler& handler) noexcept;
 
     /// Parse given target and return corresponding request handler and parsed
     /// path parameters. If handler was not found, returns 404 hanlder
-    std::pair<RequestHandler, Params> route(std::string_view target,
-                                            Method method) const noexcept;
+    std::pair<RequestHandler, std::vector<std::string_view>> route(
+        const std::string_view target, const HttpMethod method) const noexcept;
+
     void set_not_found_handler(const RequestHandler& handler) noexcept;
     void print_tree() const noexcept;
 };

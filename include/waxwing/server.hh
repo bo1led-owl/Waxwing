@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
-
 #include <cstdint>
 #include <expected>
 #include <string_view>
@@ -16,11 +14,21 @@ class Server {
     internal::Socket socket_;
 
 public:
-    bool route(Method method, std::string_view target,
-               const internal::RequestHandler& handler) noexcept;
+    bool route(
+        HttpMethod method, std::string_view target,
+        const std::function<std::unique_ptr<Response>()>& handler) noexcept;
+    bool route(HttpMethod method, std::string_view target,
+               const std::function<std::unique_ptr<Response>(Request const&)>&
+                   handler) noexcept;
+    bool route(HttpMethod method, std::string_view target,
+               const std::function<std::unique_ptr<Response>(const Params)>&
+                   handler) noexcept;
+    bool route(HttpMethod method, std::string_view target,
+               const std::function<std::unique_ptr<Response>(
+                   Request const&, const Params)>& handler) noexcept;
 
-    Result<void, std::string> bind(std::string_view address,
-                                   uint16_t port) noexcept;
+    Result<void, std::string> bind(std::string_view address, uint16_t port,
+                                   int backlog = 512) noexcept;
 
     void serve() const noexcept;
     void print_route_tree() const noexcept;

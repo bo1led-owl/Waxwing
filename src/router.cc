@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <ranges>
-#include <string>
+#include <string_view>
 
 #include "str_split.hh"
 
@@ -103,7 +103,7 @@ void Router::print_tree() const noexcept {
     root_->print();
 }
 
-bool Router::add_route(const std::string_view target, const Method method,
+bool Router::add_route(const std::string_view target, const HttpMethod method,
                        const RequestHandler& handler) noexcept {
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
@@ -142,9 +142,9 @@ bool Router::add_route(const std::string_view target, const Method method,
     }
 }
 
-std::pair<RequestHandler, Params> Router::route(
-    const std::string_view target, const Method method) const noexcept {
-    Params params;
+std::pair<RequestHandler, std::vector<std::string_view>> Router::route(
+    const std::string_view target, const HttpMethod method) const noexcept {
+    std::vector<std::string_view> params;
 
     RouteNode const* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
@@ -171,8 +171,7 @@ std::pair<RequestHandler, Params> Router::route(
         }
 
         if (parameter_node) {
-            params.insert(
-                {std::string{parameter_node->key}, std::string{component}});
+            params.push_back(component);
             cur_node = parameter_node;
         } else {
             return {not_found_handler_, std::move(params)};

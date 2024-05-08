@@ -152,6 +152,18 @@ std::string_view format_status(const StatusCode code) noexcept {
     }
 }
 
+Response::Response(Response&& rhs)
+    : status_code_{rhs.status_code_},
+      headers_{std::move(rhs.headers_)},
+      body_{std::move(rhs.body_)} {}
+
+Response& Response::operator=(Response&& rhs) {
+    std::swap(status_code_, rhs.status_code_);
+    std::swap(headers_, rhs.headers_);
+    std::swap(body_, rhs.body_);
+    return *this;
+}
+
 StatusCode Response::status() const noexcept {
     return status_code_;
 }
@@ -163,4 +175,10 @@ Headers& Response::headers() noexcept {
 std::optional<Response::Body>& Response::body() noexcept {
     return body_;
 }
+
+std::unique_ptr<Response> ResponseBuilder::build() {
+    return std::unique_ptr<Response>(
+        new Response{status_code_, std::move(headers_), std::move(body_)});
+}
+
 }  // namespace waxwing

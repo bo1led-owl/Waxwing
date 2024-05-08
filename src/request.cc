@@ -1,75 +1,87 @@
 #include "waxwing/request.hh"
 
-#include <cassert>
-#include <utility>
-
 #include "str_util.hh"
 
 namespace waxwing {
 using namespace internal;
 
-std::string_view format_method(const Method method) noexcept {
+std::string_view format_method(const HttpMethod method) noexcept {
     switch (method) {
-        case Method::Get:
+        case HttpMethod::Get:
             return "GET";
-        case Method::Post:
+        case HttpMethod::Post:
             return "POST";
-        case Method::Head:
+        case HttpMethod::Head:
             return "HEAD";
-        case Method::Put:
+        case HttpMethod::Put:
             return "PUT";
-        case Method::Delete:
+        case HttpMethod::Delete:
             return "DELETE";
-        case Method::Connect:
+        case HttpMethod::Connect:
             return "CONNECT";
-        case Method::Options:
+        case HttpMethod::Options:
             return "OPTIONS";
-        case Method::Trace:
+        case HttpMethod::Trace:
             return "TRACE";
-        case Method::Patch:
+        case HttpMethod::Patch:
             return "PATCH";
         default:
             __builtin_unreachable();
     }
 }
 
-std::optional<Method> parse_method(const std::string_view s) noexcept {
+std::optional<HttpMethod> parse_method(const std::string_view s) noexcept {
     if (s == "GET") {
-        return Method::Get;
+        return HttpMethod::Get;
     }
     if (s == "POST") {
-        return Method::Post;
+        return HttpMethod::Post;
     }
     if (s == "HEAD") {
-        return Method::Head;
+        return HttpMethod::Head;
     }
     if (s == "PUT") {
-        return Method::Put;
+        return HttpMethod::Put;
     }
     if (s == "DELETE") {
-        return Method::Delete;
+        return HttpMethod::Delete;
     }
     if (s == "CONNECT") {
-        return Method::Connect;
+        return HttpMethod::Connect;
     }
     if (s == "OPTIONS") {
-        return Method::Options;
+        return HttpMethod::Options;
     }
     if (s == "TRACE") {
-        return Method::Trace;
+        return HttpMethod::Trace;
     }
     if (s == "PATCH") {
-        return Method::Patch;
+        return HttpMethod::Patch;
     }
     return std::nullopt;
 }
 
-void Request::set_params(const internal::Params& params) noexcept {
-    params_ = params;
-}
+Request::Request(HttpMethod method, std::string&& target, Headers&& headers,
+                 std::string&& body)
+    : method_{method},
+      target_{std::move(target)},
+      headers_{std::move(headers)},
+      body_{std::move(body)} {}
 
-void Request::set_params(internal::Params&& params) noexcept {
-    params_ = std::move(params);
+Request::Request(Request&& rhs) noexcept
+    : method_{rhs.method_},
+      target_{std::move(rhs.target_)},
+      headers_{std::move(rhs.headers_)},
+      params_{std::move(rhs.params_)},
+      body_{std::move(rhs.body_)} {}
+
+Request& Request::operator=(Request&& rhs) noexcept {
+    std::swap(method_, rhs.method_);
+    std::swap(target_, rhs.target_);
+    std::swap(headers_, rhs.headers_);
+    std::swap(params_, rhs.params_);
+    std::swap(body_, rhs.body_);
+    return *this;
 }
 
 std::string_view Request::body() const noexcept {
@@ -80,7 +92,7 @@ std::string_view Request::target() const noexcept {
     return target_;
 }
 
-Method Request::method() const noexcept {
+HttpMethod Request::method() const noexcept {
     return method_;
 }
 
@@ -94,15 +106,9 @@ std::optional<std::string_view> Request::header(
 
     return result->second;
 }
-
-std::string_view Request::path_parameter(
-    const std::string_view key) const noexcept {
-    Params::const_iterator result = params_.find(str_util::to_lower(key));
-
-    assert(result != headers_.end() &&
-           "Path parameter wasn't found");  // fail here means that router is
-                                            // working incorrectly
-
-    return result->second;
+std::unique_ptr<Request> RequestBuilder::build() {
+    return std::unique_ptr<Request>(new Request{
+        method_, std::move(target_), std::move(headers_), std::move(body_)});
 }
+
 }  // namespace waxwing

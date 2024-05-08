@@ -85,6 +85,8 @@ std::string_view format_content_type(ContentType content_type) noexcept;
 std::string_view format_status(StatusCode code) noexcept;
 
 class Response {
+    friend class ResponseBuilder;
+
 public:
     struct Body {
         std::string type;
@@ -103,34 +105,31 @@ public:
 
 private:
     StatusCode status_code_;
-    internal::Headers headers_;
+    Headers headers_;
     std::optional<Body> body_;
 
-public:
-    Response(const StatusCode code, internal::Headers&& headers,
+    Response(const StatusCode code, Headers&& headers,
              std::optional<Body>&& body) noexcept
         : status_code_{code},
           headers_{std::move(headers)},
           body_{std::move(body)} {}
 
+public:
     Response(const Response&) = delete;
     Response& operator=(const Response&) = delete;
 
-    Response(Response&& rhs) {
-        std::swap(status_code_, rhs.status_code_);
-        std::swap(headers_, rhs.headers_);
-        std::swap(body_, rhs.body_);
-    }
+    Response(Response&& rhs);
+    Response& operator=(Response&&);
 
     StatusCode status() const noexcept;
-    internal::Headers& headers() noexcept;
+    Headers& headers() noexcept;
     std::optional<Body>& body() noexcept;
 };
 
 class ResponseBuilder final {
     StatusCode status_code_;
-    internal::Headers headers_;
-    std::optional<Response::Body> body_;
+    Headers headers_{};
+    std::optional<Response::Body> body_{};
 
 public:
     ResponseBuilder(StatusCode code) noexcept : status_code_{code} {}
@@ -162,9 +161,6 @@ public:
         return *this;
     }
 
-    std::unique_ptr<Response> build() {
-        return std::make_unique<Response>(status_code_, std::move(headers_),
-                                          std::move(body_));
-    }
+    std::unique_ptr<Response> build();
 };
 }  // namespace waxwing

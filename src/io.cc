@@ -14,11 +14,8 @@
 
 #include "waxwing/result.hh"
 
-constexpr int MAX_CONNECTIONS = 512;
-
 namespace waxwing {
 namespace internal {
-
 FileDescriptor::~FileDescriptor() {
     close(fd_);
 }
@@ -37,18 +34,24 @@ Connection& Connection::operator=(Connection&& rhs) noexcept {
     return *this;
 }
 
-void Connection::recv(std::string& s, const size_t n) const {
+size_t Connection::recv(std::string& s, const size_t n) const {
     const size_t prev_size = s.size();
-    s.resize(s.size() + n);
-    s.resize(prev_size + ::recv(fd_, &s[prev_size], n * sizeof(char), 0));
+
+    s.reserve(s.size() + n);
+
+    const size_t bytes_read = ::recv(fd_, &s[prev_size], n * sizeof(char), 0);
+
+    s.resize(prev_size + bytes_read);
+    return bytes_read;
 }
 
-size_t Connection::send(const std::string_view s) const {
+size_t Connection::send(const std::span<char> s) const {
     return ::send(fd_, s.data(), s.size(), 0);
 }
 
 Result<Socket, std::string> Socket::create(const std::string_view address,
-                                           const uint16_t port) {
+                                           const uint16_t port,
+                                           const int backlog) {
     const int fd = ::socket(PF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         return Error{std::make_error_code(std::errc{errno}).message()};
@@ -68,7 +71,7 @@ Result<Socket, std::string> Socket::create(const std::string_view address,
     if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
         return Error{std::make_error_code(std::errc{errno}).message()};
     }
-    if (::listen(fd, MAX_CONNECTIONS) < 0) {
+    if (::listen(fd, backlog) < 0) {
         return Error{std::make_error_code(std::errc{errno}).message()};
     }
 

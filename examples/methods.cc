@@ -1,40 +1,20 @@
 #include <spdlog/spdlog.h>
 
-#include <charconv>
 #include <cstdint>
 #include <cstdlib>
 #include <string_view>
-#include <system_error>
 
 #include "waxwing/server.hh"
 
-class TemperatureMeter {
-    float temp_;
+auto echo_get() {
+    return waxwing::ResponseBuilder{waxwing::StatusCode::Ok}.build();
+}
 
-public:
-    TemperatureMeter(float inital_temp) : temp_{inital_temp} {}
-
-    auto stat_get(const waxwing::Request&) const {
-        return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-            .body(waxwing::ContentType::Text, std::to_string(temp_))
-            .build();
-    }
-
-    auto stat_post(const waxwing::Request& req) {
-        auto [_, error_code] =
-            std::from_chars(req.body().cbegin(), req.body().cend(), temp_);
-
-        if (error_code == std::errc()) {
-            return waxwing::ResponseBuilder(waxwing::StatusCode::Ok).build();
-        }
-
-        return waxwing::ResponseBuilder(waxwing::StatusCode::BadRequest)
-            .body(waxwing::ContentType::Text,
-                  "Error parsing temperature: " +
-                      std::make_error_code(error_code).message())
-            .build();
-    }
-};
+auto echo_post(const waxwing::Request& req) {
+    return waxwing::ResponseBuilder{waxwing::StatusCode::Ok}
+        .body(req.header("content-type").value_or("text/plain"), req.body())
+        .build();
+}
 
 int main() {
     constexpr std::string_view HOST = "127.0.0.1";
@@ -42,13 +22,8 @@ int main() {
 
     waxwing::Server s{};
 
-    TemperatureMeter meter{25.0f};
-    s.route(
-        waxwing::Method::Get, "/stat",
-        [&meter](const waxwing::Request& req) { return meter.stat_get(req); });
-    s.route(
-        waxwing::Method::Post, "/stat",
-        [&meter](const waxwing::Request& req) { return meter.stat_post(req); });
+    s.route(waxwing::HttpMethod::Get, "/echo", echo_get);
+    s.route(waxwing::HttpMethod::Post, "/echo", echo_post);
 
     const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {

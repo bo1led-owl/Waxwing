@@ -1,3 +1,5 @@
+#include <spdlog/spdlog.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
@@ -6,19 +8,19 @@
 
 #include "waxwing/server.hh"
 
-auto name(const waxwing::Request& req) {
+auto name(const waxwing::Params params) {
     std::stringstream ss;
-    ss << "Requested user " << std::quoted(req.path_parameter("name"));
+    ss << "Requested user " << std::quoted(params[0]);
 
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
         .body(waxwing::ContentType::Text, ss.str())
         .build();
 }
 
-auto name_action(const waxwing::Request& req) {
+auto name_action(const waxwing::Params params) {
     std::stringstream ss;
-    ss << "Requested " << std::quoted(req.path_parameter("action")) << " on "
-       << std::quoted(req.path_parameter("name"));
+    ss << "Requested " << std::quoted(params[1]) << " on "
+       << std::quoted(params[0]);
 
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
         .body(waxwing::ContentType::Text, ss.str())
@@ -30,11 +32,10 @@ int main() {
     constexpr uint16_t PORT = 8080;
 
     waxwing::Server s{};
-    s.route(waxwing::Method::Get, "/:name", name);
-    s.route(waxwing::Method::Get, "/:name/*action", name_action);
+    s.route(waxwing::HttpMethod::Get, "/:name", name);
+    s.route(waxwing::HttpMethod::Get, "/:name/*action", name_action);
 
-    const waxwing::Result<void, std::string> bind_result =
-        s.bind(HOST, PORT);
+    const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
         spdlog::error("Error: {}", bind_result.error());
         return EXIT_FAILURE;

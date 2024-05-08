@@ -1,3 +1,5 @@
+#include <spdlog/spdlog.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
@@ -23,7 +25,7 @@ auto read_header(const waxwing::Request& req) {
     }
 }
 
-auto write_header(const waxwing::Request&) {
+auto write_header() {
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
         .header("Key", "1234")
         .build();
@@ -34,11 +36,10 @@ int main() {
     constexpr uint16_t PORT = 8080;
 
     waxwing::Server s{};
-    s.route(waxwing::Method::Get, "/auth", read_header);
-    s.route(waxwing::Method::Get, "/get_key", write_header);
+    s.route(waxwing::HttpMethod::Get, "/auth", read_header);
+    s.route(waxwing::HttpMethod::Get, "/get_key", write_header);
 
-    const waxwing::Result<void, std::string> bind_result =
-        s.bind(HOST, PORT);
+    const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
         spdlog::error("Error: {}", bind_result.error());
         return EXIT_FAILURE;

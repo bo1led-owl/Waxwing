@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -22,10 +23,9 @@ struct string_hash {
         return hash_type{}(str);
     }
 };
-
-using Headers =
-    std::unordered_map<std::string, std::string, string_hash, std::equal_to<>>;
-using Params =
-    std::unordered_map<std::string, std::string, string_hash, std::equal_to<>>;
 }  // namespace internal
+
+using Headers = std::unordered_map<std::string, std::string,
+                                   internal::string_hash, std::equal_to<>>;
+using Params = std::span<std::string_view>;
 }  // namespace waxwing

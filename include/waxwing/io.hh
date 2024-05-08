@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -35,8 +36,8 @@ public:
     Connection(Connection&&) noexcept;
     Connection& operator=(Connection&&) noexcept;
 
-    void recv(std::string& s, size_t n) const;
-    size_t send(std::string_view s) const;
+    size_t recv(std::string& s, size_t n) const;
+    size_t send(std::span<char> s) const;
 };
 
 class Socket final : public FileDescriptor {
@@ -46,7 +47,7 @@ public:
     Socket() : FileDescriptor{-1} {}
 
     static Result<Socket, std::string> create(std::string_view address,
-                                              uint16_t port);
+                                              uint16_t port, int backlog);
 
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;

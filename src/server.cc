@@ -2,7 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -47,11 +46,26 @@ void concat_headers(std::string& buf, const Headers& headers) {
     }
 }
 
-Result<Request, std::string_view> read_request(const Connection& conn) {
+std::string read_body(const Connection& conn, std::string_view initial) {
+    constexpr size_t CHUNK_SIZE = 1024;
+
+    std::string body{initial};
+
+    size_t bytes_read = 0;
+    do {
+        bytes_read = conn.recv(body, CHUNK_SIZE);
+    } while (bytes_read > 0);
+
+    return body;
+}
+
+Result<std::unique_ptr<Request>, std::string_view> read_request(
+    const Connection& conn) {
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
-    const str_util::Split line_split = str_util::split(buf, "\r\n");
+    const str_util::Split line_split =
+        str_util::split(std::string_view{buf.cbegin(), buf.cend()}, "\r\n");
     auto line_iter = line_split.begin();
 
     if (line_iter == line_split.end()) {
@@ -73,7 +87,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
         return result;
     };
 
-    std::optional<Method> method = and_then(
+    std::optional<HttpMethod> method = and_then(
         get_tok(), [](const std::string_view s) { return parse_method(s); });
     std::optional<std::string_view> target = get_tok();
     const std::optional<std::string_view> http_version = get_tok();
@@ -87,7 +101,7 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
         target = std::move(std::string("/").append(target.value()));
     }
 
-    Headers headers;
+    RequestBuilder builder{method.value(), std::move(target.value())};
 
     for (; line_iter != line_split.end(); ++line_iter) {
         const std::string_view line = *line_iter;
@@ -95,35 +109,20 @@ Result<Request, std::string_view> read_request(const Connection& conn) {
             break;
         }
 
-        const std::pair<std::string, std::string> header = parse_header(line);
-        headers.insert_or_assign(std::string{header.first},
-                                 std::string{header.second});
+        auto [key, value] = parse_header(line);
+        builder.header(std::move(key), std::move(value));
     };
 
-    std::string body{line_iter.remaining()};
-
-    size_t content_length = 0;
-    if (headers.contains("content-length")) {
-        const auto [_, ec] = std::from_chars(
-            headers["content-length"].begin().base(),
-            headers["content-length"].end().base(), content_length);
-
-        if (ec != std::errc{}) {
-            return Error{"Error parsing `Content-Length`"};
-        }
+    // only these methods are allowed to carry payload
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
+    if (method.value() == HttpMethod::Delete ||
+        method.value() == HttpMethod::Patch ||
+        method.value() == HttpMethod::Post ||
+        method.value() == HttpMethod::Put) {
+        builder.body(read_body(conn, line_iter.remaining()));
     }
 
-    if (content_length > body.size()) {
-        // content-length header is present
-        body.reserve(body.size() + content_length);
-        while (content_length > body.size()) {
-            conn.recv(body, content_length - body.size());
-        }
-    }
-    body.resize(content_length);
-
-    return Request{method.value(), target.value(), std::move(headers),
-                   std::move(body)};
+    return builder.build();
 }
 
 void send_response(const Connection& conn, Response& resp) {
@@ -165,26 +164,76 @@ void handle_connection(const Router& router, Connection connection) {
         return;
     }
 
-    Request& req = req_res.value();
+    Request& req = *req_res.value();
 
-    std::pair<RequestHandler, Params> route =
-        router.route(req.target(), req.method());
+    auto [handler, params] = router.route(req.target(), req.method());
 
-    req.set_params(route.second);
-    std::unique_ptr<Response> resp = route.first(req);
-    spdlog::info("{} {} -> {}", format_method(req_res->method()),
-                 req_res->target(), format_status(resp->status()));
+    std::unique_ptr<Response> resp = handler(req, params);
+    spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
+                 format_status(resp->status()));
     send_response(connection, *resp);
 }
 }  // namespace
 
-bool Server::route(const Method method, const std::string_view target,
-                   const RequestHandler& handler) noexcept {
+bool Server::route(
+    const HttpMethod method, const std::string_view target,
+    const std::function<std::unique_ptr<Response>()>& handler) noexcept {
+    const bool result = router_.add_route(
+        target, method,
+        [&handler](const Request&, const Params) { return handler(); });
+
+    if (!result) {
+        spdlog::warn(
+            "handler for `{}` on `{}` was already present, the new one is "
+            "ignored",
+            format_method(method), target);
+    }
+    return result;
+}
+
+bool Server::route(
+    const HttpMethod method, const std::string_view target,
+    const std::function<std::unique_ptr<Response>(Request const&)>&
+        handler) noexcept {
+    const bool result = router_.add_route(
+        target, method,
+        [&handler](const Request& req, const Params) { return handler(req); });
+
+    if (!result) {
+        spdlog::warn(
+            "handler for `{}` on `{}` was already present, the new one is "
+            "ignored",
+            format_method(method), target);
+    }
+    return result;
+}
+
+bool Server::route(const HttpMethod method, const std::string_view target,
+                   const std::function<std::unique_ptr<Response>(const Params)>&
+                       handler) noexcept {
+    const bool result = router_.add_route(
+        target, method, [&handler](const Request&, const Params params) {
+            return handler(params);
+        });
+
+    if (!result) {
+        spdlog::warn(
+            "handler for `{}` on `{}` was already present, the new one is "
+            "ignored",
+            format_method(method), target);
+    }
+    return result;
+}
+
+bool Server::route(const HttpMethod method, const std::string_view target,
+                   const std::function<std::unique_ptr<Response>(
+                       Request const&, const Params)>& handler) noexcept {
     const bool result = router_.add_route(target, method, handler);
 
     if (!result) {
         spdlog::warn(
-            "handler for `{}` on `{}` was already present, the new one is ignored",
+            "handler for `{}` on `{}` was already present, the new one is "
+            "ignored",
             format_method(method), target);
     }
     return result;
@@ -195,8 +244,9 @@ void Server::print_route_tree() const noexcept {
 }
 
 Result<void, std::string> Server::bind(const std::string_view address,
-                                       const uint16_t port) noexcept {
-    auto sock_res = Socket::create(address, port);
+                                       const uint16_t port,
+                                       const int backlog) noexcept {
+    auto sock_res = Socket::create(address, port, backlog);
     if (!sock_res) {
         return Error{std::move(sock_res.error())};
     }

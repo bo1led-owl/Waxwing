@@ -1,10 +1,12 @@
+#include <spdlog/spdlog.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <string_view>
 
 #include "waxwing/server.hh"
 
-auto hello_world(const waxwing::Request&) {
+auto hello_world() {
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
         .body(waxwing::ContentType::Text, "Hello world!")
         .build();
@@ -15,7 +17,7 @@ int main() {
     constexpr uint16_t PORT = 8080;
 
     waxwing::Server s{};
-    s.route(waxwing::Method::Get, "/hello", hello_world);
+    s.route(waxwing::HttpMethod::Get, "/hello", hello_world);
 
     const waxwing::Result<void, std::string> bind_result = s.bind(HOST, PORT);
     if (bind_result.has_error()) {
