@@ -106,9 +106,9 @@ std::optional<std::string_view> Request::header(
 
     return result->second;
 }
+
 std::unique_ptr<Request> RequestBuilder::build() {
     return std::unique_ptr<Request>(new Request{
         method_, std::move(target_), std::move(headers_), std::move(body_)});
 }
-
 }  // namespace waxwing

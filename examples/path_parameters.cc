@@ -1,3 +1,4 @@
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
@@ -9,11 +10,10 @@
 #include "waxwing/server.hh"
 
 auto name(const waxwing::Params params) {
-    std::stringstream ss;
-    ss << "Requested user " << std::quoted(params[0]);
+    std::string body = fmt::format("Requested user \"{}\"", params[0]);
 
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-        .body(waxwing::ContentType::Text, ss.str())
+        .body(waxwing::ContentType::Text, std::move(body))
         .build();
 }
 

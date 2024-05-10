@@ -70,6 +70,14 @@ public:
         headers_.emplace(std::forward<S1>(key), std::forward<S2>(value));
     }
 
+    void headers(const Headers& headers) {
+        headers_ = headers;
+    }
+
+    void headers(Headers&& headers) {
+        headers_ = std::move(headers);
+    }
+
     template <typename S>
         requires(std::is_constructible_v<std::string, S>)
     void body(S&& value) {

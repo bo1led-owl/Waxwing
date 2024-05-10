@@ -2,10 +2,10 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 enable_testing()
 
-function(add_test_target NAME SRC)
+macro(add_test_target NAME)
   add_executable(
     ${NAME}
-    ${SRC}
+    ${ARGN}
   )
   target_include_directories(${NAME}
     PRIVATE 
@@ -18,8 +18,9 @@ function(add_test_target NAME SRC)
       ${PROJECT_NAME}
   )
   gtest_discover_tests(${NAME})
-endfunction()
+endmacro()
 
 add_test_target(test 
   str_utils.cc
+  thread_pool.cc
 )

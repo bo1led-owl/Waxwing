@@ -11,11 +11,11 @@ template <typename Sep>
     requires(std::convertible_to<Sep, std::string_view> ||
              std::convertible_to<Sep, char>)
 class Split final {
-    static size_t length(const char) {
+    static constexpr size_t length(const char) {
         return 1;
     }
 
-    static size_t length(const std::string_view& s) {
+    static constexpr size_t length(const std::string_view& s) {
         return s.size();
     }
 

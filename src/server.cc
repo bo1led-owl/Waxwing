@@ -1,5 +1,6 @@
 #include "waxwing/server.hh"
 
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include <cstddef>
@@ -7,29 +8,28 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
-#include "concurrency.hh"
 #include "str_split.hh"
 #include "str_util.hh"
+#include "thread_pool.hh"
 #include "waxwing/io.hh"
 #include "waxwing/request.hh"
 #include "waxwing/response.hh"
 #include "waxwing/router.hh"
 #include "waxwing/types.hh"
 
-constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
-
 namespace waxwing {
 using namespace internal;
 
 namespace {
-std::pair<std::string, std::string> parse_header(const std::string_view s) {
-    const size_t colon_pos = s.find(':');
+std::pair<std::string, std::string> parse_header(const std::string_view line) {
+    const size_t colon_pos = line.find(':');
 
-    return {str_util::to_lower(str_util::trim(s.substr(0, colon_pos))),
+    return {str_util::to_lower(str_util::trim(line.substr(0, colon_pos))),
             std::string{str_util::trim(
-                s.substr(colon_pos + 1, s.size() - colon_pos - 1))}};
+                line.substr(colon_pos + 1, line.size() - colon_pos - 1))}};
 }
 
 void concat_header(std::string& buf, const std::string_view key,
@@ -59,19 +59,9 @@ std::string read_body(const Connection& conn, std::string_view initial,
     return body;
 }
 
-Result<std::unique_ptr<Request>, std::string_view> read_request(
-    const Connection& conn) {
-    std::string buf;
-    conn.recv(buf, HEADERS_BUFFER_SIZE);
-
-    const str_util::Split line_split = str_util::split(buf, "\r\n");
-    auto line_iter = line_split.begin();
-
-    if (line_iter == line_split.end()) {
-        return Error{"No request line"};
-    }
-
-    const auto token_split = str_util::split(*line_iter, ' ');
+std::optional<std::pair<HttpMethod, std::string>> parse_request_line(
+    std::string_view line) {
+    const auto token_split = str_util::split(line, ' ');
     auto token_iter = token_split.begin();
 
     auto get_tok = [&token_iter,
@@ -93,17 +83,53 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
     const std::optional<std::string_view> http_version = get_tok();
 
     if (!method || !target || !http_version) {
+        return std::nullopt;
+    }
+    return {{method.value(), std::move(*target)}};
+}
+
+Result<size_t, std::string> parse_content_length(const Headers& headers) {
+    size_t content_length;
+    std::string_view raw_content_length =
+        headers.find("content-length")->second;
+
+    const std::errc error_code =
+        std::from_chars(raw_content_length.cbegin(), raw_content_length.cend(),
+                        content_length)
+            .ec;
+    if (error_code != std::errc{}) {
+        return Error{fmt::format("couldn't parse `Content-Length`: {}",
+                                 std::make_error_code(error_code).message())};
+    }
+    return content_length;
+}
+
+Result<std::unique_ptr<Request>, std::string> read_request(
+    const Connection& conn) {
+    constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
+
+    std::string buf;
+    conn.recv(buf, HEADERS_BUFFER_SIZE);
+
+    const str_util::Split line_split = str_util::split(buf, "\r\n");
+    auto line_iter = line_split.begin();
+
+    std::optional<std::pair<HttpMethod, std::string>> request_line_opt =
+        parse_request_line(*line_iter);
+    if (!request_line_opt) {
         return Error{"Error parsing request line"};
     }
+
+    auto [method, target] = std::move(*request_line_opt);
     ++line_iter;
 
-    if (!target->starts_with('/')) {
-        target = std::move(std::string("/").append(target.value()));
+    if (!target.starts_with('/')) {
+        target = std::move(std::string("/").append(target));
     }
 
-    RequestBuilder builder{method.value(), std::move(target.value())};
+    RequestBuilder builder{method, std::move(target)};
+    Headers headers;
 
-    std::optional<size_t> content_length{};
     for (; line_iter != line_split.end(); ++line_iter) {
         const std::string_view line = *line_iter;
         if (line.empty()) {
@@ -111,31 +137,28 @@ Result<std::unique_ptr<Request>, std::string_view> read_request(
         }
 
         auto [key, value] = parse_header(line);
-
-        if (key == "Content-Length") {
-            size_t len;
-            if (std::from_chars(key.cbegin().base(), key.cend().base(), len)
-                    .ec == std::errc{}) {
-                content_length = len;
-            }
-        }
-        builder.header(std::move(key), std::move(value));
+        headers.emplace(std::move(key), std::move(value));
     };
 
     // only these methods are allowed to carry payload
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-    if (method.value() == HttpMethod::Delete ||
-        method.value() == HttpMethod::Patch ||
-        method.value() == HttpMethod::Post ||
-        method.value() == HttpMethod::Put) {
-        if (content_length.has_value()) {
+    if (method == HttpMethod::Delete || method == HttpMethod::Patch ||
+        method == HttpMethod::Post || method == HttpMethod::Put) {
+        if (headers.contains("content-length")) {
+            Result<size_t, std::string> content_length =
+                parse_content_length(headers);
+            if (!content_length) {
+                return Error{content_length.error()};
+            }
+
             builder.body(
-                read_body(conn, line_iter.remaining(), content_length.value()));
+                read_body(conn, line_iter.remaining(), *content_length));
         } else {
             builder.body(line_iter.remaining());
         }
     }
 
+    builder.headers(std::move(headers));
     return builder.build();
 }
 

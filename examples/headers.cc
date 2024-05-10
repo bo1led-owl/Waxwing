@@ -1,9 +1,8 @@
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
 #include <cstdlib>
-#include <iomanip>
-#include <sstream>
 #include <string_view>
 
 #include "waxwing/server.hh"
@@ -11,16 +10,14 @@
 auto read_header(const waxwing::Request& req) {
     std::optional<std::string_view> header = req.header("Key");
 
-    std::stringstream ss;
     if (header.has_value()) {
-        ss << "OK key " << std::quoted(header.value());
+        std::string body = fmt::format("OK key \"{}\"", *header);
         return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-            .body(waxwing::ContentType::Text, ss.str())
+            .body(waxwing::ContentType::Text, std::move(body))
             .build();
     } else {
-        ss << "No key provided";
         return waxwing::ResponseBuilder(waxwing::StatusCode::BadRequest)
-            .body(waxwing::ContentType::Text, ss.str())
+            .body(waxwing::ContentType::Text, "No key provided")
             .build();
     }
 }

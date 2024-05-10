@@ -29,8 +29,11 @@ target_include_directories(${PROJECT_NAME}
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/server.hh)
 
+find_package(fmt REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC fmt)
+
 find_package(spdlog REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog)
 
 if (ENABLE_TESTING)
   add_subdirectory(tests)
