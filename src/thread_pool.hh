@@ -13,12 +13,7 @@
 namespace waxwing {
 namespace internal {
 namespace concurrency {
-enum class ExecutionStatus {
-    Continue,
-    Done,
-};
-
-using Task = MovableFunction<ExecutionStatus()>;
+using Task = MovableFunction<void()>;
 
 class TaskQueue {
     std::queue<Task> repr_;
@@ -137,18 +132,13 @@ public:
     void async(MovableFunction<void()>&& f) {
         const unsigned int cur = cur_queue_index_++;
 
-        Task task = [f_ = std::move(f)]() {
-            f_();
-            return ExecutionStatus::Continue;
-        };
-
         for (unsigned i = 0; i != NUM_THREADS; ++i) {
-            if (queues_[(cur + i) % NUM_THREADS].try_push(std::move(task))) {
+            if (queues_[(cur + i) % NUM_THREADS].try_push(std::move(f))) {
                 return;
             }
         }
 
-        queues_[cur & NUM_THREADS].push(std::move(task));
+        queues_[cur & NUM_THREADS].push(std::move(f));
     }
 };
 }  // namespace concurrency

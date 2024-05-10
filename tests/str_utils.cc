@@ -3,6 +3,8 @@
 #include "str_split.hh"
 #include "str_util.hh"
 
+using namespace std::literals;
+
 namespace {
 using namespace waxwing::str_util;
 
@@ -10,8 +12,9 @@ TEST(Split, CharacterSeparatorBasic) {
     auto iter = split("hello world", ' ');
     const std::vector<std::string_view> words{"hello", "world"};
 
-    int i = 0;
+    size_t i = 0;
     for (auto word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -22,8 +25,9 @@ TEST(Split, CharacterSeparatorEmptyWords) {
     auto iter = split(" hello  world ", ' ');
     const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
-    int i = 0;
+    size_t i = 0;
     for (auto word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -34,8 +38,9 @@ TEST(Split, CharacterSeparatorSingleItem) {
     auto iter = split("hello", ' ');
     const std::vector<std::string_view> words{"hello"};
 
-    int i = 0;
-    for (auto word : iter) {
+    size_t i = 0;
+    for (std::string_view word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -46,8 +51,9 @@ TEST(Split, MultiCharacterSeparatorBasic) {
     auto iter = split("helloabaworld", "aba");
     const std::vector<std::string_view> words{"hello", "world"};
 
-    int i = 0;
+    size_t i = 0;
     for (auto word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -58,8 +64,9 @@ TEST(Split, MultiCharacterSeparatorEmptyWords) {
     auto iter = split("abahelloabaabaworldaba", "aba");
     const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
-    int i = 0;
+    size_t i = 0;
     for (auto word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -70,8 +77,9 @@ TEST(Split, MultiCharacterSeparatorSingleItem) {
     auto iter = split("hello", "  ");
     const std::vector<std::string_view> words{"hello"};
 
-    int i = 0;
+    size_t i = 0;
     for (auto word : iter) {
+        ASSERT_LT(i, words.size());
         EXPECT_EQ(word, words[i]);
         i++;
     }
@@ -83,7 +91,7 @@ TEST(Split, CharacterSeparatorRemaining) {
         split("The quick brown fox jumps over the lazy dog", ' ').begin();
     ++iter;
     ++iter;
-    EXPECT_EQ(iter.remaining(), "fox jumps over the lazy dog");
+    EXPECT_EQ(iter.remaining(), "fox jumps over the lazy dog"sv);
 }
 
 TEST(Split, MultiCharacterSeparatorRemaining) {
@@ -92,7 +100,7 @@ TEST(Split, MultiCharacterSeparatorRemaining) {
             .begin();
     ++iter;
     ++iter;
-    EXPECT_EQ(iter.remaining(), "fox  jumps  over  the  lazy  dog");
+    EXPECT_EQ(iter.remaining(), "fox  jumps  over  the  lazy  dog"sv);
 }
 
 TEST(Trim, LTrim) {

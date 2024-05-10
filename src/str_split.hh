@@ -11,11 +11,11 @@ template <typename Sep>
     requires(std::convertible_to<Sep, std::string_view> ||
              std::convertible_to<Sep, char>)
 class Split final {
-    static constexpr size_t length(const char) {
+    static constexpr size_t length(char) {
         return 1;
     }
 
-    static constexpr size_t length(const std::string_view& s) {
+    static constexpr size_t length(std::string_view s) {
         return s.size();
     }
 
@@ -28,13 +28,21 @@ public:
     class Iterator final {
         friend class Split;
 
-        std::optional<std::string_view> remaining_;
+        std::string_view src_;
         std::optional<std::string_view> cur_;
+        size_t cur_index_ = 0;
         Sep sep_;
 
         constexpr Iterator(std::string_view src, Sep sep)
-            : remaining_{src}, sep_{sep} {
-            ++(*this);
+            : src_{src}, sep_{sep} {
+            const size_t index = src_.find(sep_);
+            const bool found = index != std::string_view::npos;
+            if (!found && src_.empty()) {
+                cur_ = "";
+            } else {
+                cur_ = src_.substr(0, index);
+                cur_index_ = std::min(index, src_.length());
+            }
         }
 
     public:
@@ -45,18 +53,22 @@ public:
         using iterator_category = std::forward_iterator_tag;
 
         constexpr Iterator& operator++() {
-            const size_t len = remaining_->find(sep_);
-            const bool found = len != std::string_view::npos;
+            if (!cur_) {
+                return *this;
+            }
+
+            const size_t index = src_.find(sep_, cur_index_ + length(sep_));
+            const bool found = index != std::string_view::npos;
 
             if (found) {
-                cur_ = remaining_->substr(0, len);
-                remaining_ = remaining_->substr(len + length(sep_));
-            } else if (remaining_) {
-                cur_ = remaining_;
-                remaining_ = std::nullopt;
+                cur_ = src_.substr(cur_index_ + length(sep_),
+                                   index - cur_index_ - length(sep_));
+                cur_index_ = index;
+            } else if (cur_index_ < src_.length()) {
+                cur_ = src_.substr(cur_index_ + length(sep_));
+                cur_index_ = src_.length();
             } else {
                 cur_ = std::nullopt;
-                remaining_ = std::nullopt;
             }
 
             return *this;
@@ -69,16 +81,16 @@ public:
         }
 
         constexpr value_type operator*() const {
-            return cur_.value();
+            return *cur_;
         }
 
         constexpr pointer operator->() const {
-            return &cur_.value();
+            return &*cur_;
         }
 
         constexpr bool operator==(const Iterator& other) const noexcept {
-            return remaining_ == other.remaining_ && cur_ == other.cur_ &&
-                   sep_ == other.sep_;
+            return src_ == src_ && cur_ == other.cur_ &&
+                   cur_index_ == other.cur_index_ && sep_ == other.sep_;
         }
 
         constexpr bool operator==(const IteratorSentinel&) const noexcept {
@@ -86,7 +98,7 @@ public:
         }
 
         constexpr std::string_view remaining() const noexcept {
-            return remaining_.value_or("");
+            return src_.substr(cur_index_ + length(sep_));
         }
     };
 
@@ -102,12 +114,12 @@ public:
     }
 };
 
-constexpr Split<std::string_view> split(const std::string_view str,
-                                        const std::string_view sep) {
+constexpr Split<std::string_view> split(std::string_view str,
+                                        std::string_view sep) {
     return Split(str, sep);
 }
 
-constexpr Split<char> split(const std::string_view str, const char sep) {
+constexpr Split<char> split(std::string_view str, char sep) {
     return Split(str, sep);
 }
 }  // namespace str_util
