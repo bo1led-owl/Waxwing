@@ -27,6 +27,8 @@ public:
                const std::function<std::unique_ptr<Response>(
                    Request const&, const Params)>& handler) noexcept;
 
+    void set_not_found_handler(internal::RequestHandler handler);
+
     Result<void, std::string> bind(std::string_view address, uint16_t port,
                                    int backlog = 512) noexcept;
 

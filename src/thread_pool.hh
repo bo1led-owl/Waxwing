@@ -91,9 +91,8 @@ public:
 };
 
 class ThreadPool {
-    const unsigned int NUM_THREADS = std::thread::hardware_concurrency();
-
-    std::vector<TaskQueue> queues_{NUM_THREADS};
+    const unsigned num_threads_;
+    std::vector<TaskQueue> queues_;
     std::vector<std::jthread> threads_;
     std::atomic<unsigned int> cur_queue_index_ = 0;
 
@@ -101,8 +100,8 @@ class ThreadPool {
         for (;;) {
             Task f;
 
-            for (unsigned int i = 0; i != NUM_THREADS; ++i) {
-                const unsigned cur = (assigned_queue + i) % NUM_THREADS;
+            for (unsigned int i = 0; i != num_threads_; ++i) {
+                const unsigned cur = (assigned_queue + i) % num_threads_;
                 if (queues_[cur].try_pop(f)) {
                     break;
                 }
@@ -117,8 +116,9 @@ class ThreadPool {
     }
 
 public:
-    ThreadPool() {
-        for (unsigned int i = 0; i != NUM_THREADS; ++i) {
+    ThreadPool(unsigned int threads = std::thread::hardware_concurrency())
+        : num_threads_{threads}, queues_{threads} {
+        for (unsigned int i = 0; i != num_threads_; ++i) {
             threads_.emplace_back([&, i]() { thread_func(i); });
         }
     }
@@ -132,13 +132,13 @@ public:
     void async(MovableFunction<void()>&& f) {
         const unsigned int cur = cur_queue_index_++;
 
-        for (unsigned i = 0; i != NUM_THREADS; ++i) {
-            if (queues_[(cur + i) % NUM_THREADS].try_push(std::move(f))) {
+        for (unsigned i = 0; i != num_threads_; ++i) {
+            if (queues_[(cur + i) % num_threads_].try_push(std::move(f))) {
                 return;
             }
         }
 
-        queues_[cur & NUM_THREADS].push(std::move(f));
+        queues_[cur & num_threads_].push(std::move(f));
     }
 };
 }  // namespace concurrency

@@ -22,13 +22,14 @@ TEST(ThreadPool, SingleProducer) {
 
 TEST(ThreadPool, MultipleProducers) {
     constexpr const int TASKS = 256;
-    constexpr const int PRODUCERS = 8;
+    constexpr const size_t CONSUMERS = 4;
+    constexpr const int PRODUCERS = 4;
     ASSERT_EQ(TASKS % PRODUCERS, 0);
 
     std::atomic<int> consumed = 0;
     std::atomic<int> produced = 0;
     {
-        ThreadPool pool;
+        ThreadPool pool{CONSUMERS};
         std::vector<std::jthread> producers;
         for (int i = 0; i < PRODUCERS; ++i) {
             producers.emplace_back([&consumed, &pool, &produced]() {

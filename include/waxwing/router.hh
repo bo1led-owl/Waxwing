@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string_view>
 #include <unordered_map>
@@ -49,22 +48,22 @@ class Router {
     RequestHandler not_found_handler_;
 
 public:
-    Router(const RequestHandler& not_found_handler = default_404_handler)
+    Router(RequestHandler not_found_handler = default_404_handler)
         : root_{std::make_unique<RouteNode>(Router::RouteNode::Type::Literal,
                                             "")},
           not_found_handler_{not_found_handler} {}
 
     /// Insert new route into the tree, returns whether the new value was
     /// inserted
-    bool add_route(std::string_view target, HttpMethod method,
+    bool add_route(HttpMethod method, std::string_view target,
                    const RequestHandler& handler) noexcept;
 
     /// Parse given target and return corresponding request handler and parsed
     /// path parameters. If handler was not found, returns 404 hanlder
     std::pair<RequestHandler, std::vector<std::string_view>> route(
-        const std::string_view target, const HttpMethod method) const noexcept;
+        HttpMethod method, std::string_view target) const noexcept;
 
-    void set_not_found_handler(const RequestHandler& handler) noexcept;
+    void set_not_found_handler(RequestHandler handler) noexcept;
     void print_tree() const noexcept;
 };
 }  // namespace internal

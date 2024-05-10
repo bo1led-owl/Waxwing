@@ -23,4 +23,8 @@ endmacro()
 add_test_target(test 
   str_utils.cc
   thread_pool.cc
+  router.cc
 )
+
+target_compile_options(test PUBLIC -fsanitize=address,undefined)
+target_link_options(test PUBLIC -fsanitize=address,undefined)

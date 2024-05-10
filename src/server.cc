@@ -203,7 +203,7 @@ void handle_connection(const Router& router, Connection connection) {
 
     Request& req = *req_res.value();
 
-    auto [handler, params] = router.route(req.target(), req.method());
+    auto [handler, params] = router.route(req.method(), req.target());
 
     std::unique_ptr<Response> resp = handler(req, params);
     spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
@@ -215,57 +215,32 @@ void handle_connection(const Router& router, Connection connection) {
 bool Server::route(
     const HttpMethod method, const std::string_view target,
     const std::function<std::unique_ptr<Response>()>& handler) noexcept {
-    const bool result = router_.add_route(
-        target, method,
-        [handler](const Request&, const Params) { return handler(); });
-
-    if (!result) {
-        spdlog::warn(
-            "handler for `{}` on `{}` was already present, the new one is "
-            "ignored",
-            format_method(method), target);
-    }
-    return result;
+    return route(method, target,
+                 [handler](const Request&, const Params) { return handler(); });
 }
 
 bool Server::route(
     const HttpMethod method, const std::string_view target,
     const std::function<std::unique_ptr<Response>(Request const&)>&
         handler) noexcept {
-    const bool result = router_.add_route(
-        target, method,
-        [handler](const Request& req, const Params) { return handler(req); });
-
-    if (!result) {
-        spdlog::warn(
-            "handler for `{}` on `{}` was already present, the new one is "
-            "ignored",
-            format_method(method), target);
-    }
-    return result;
+    return route(method, target, [handler](const Request& req, const Params) {
+        return handler(req);
+    });
 }
 
 bool Server::route(const HttpMethod method, const std::string_view target,
                    const std::function<std::unique_ptr<Response>(const Params)>&
                        handler) noexcept {
-    const bool result = router_.add_route(
-        target, method, [handler](const Request&, const Params params) {
-            return handler(params);
-        });
-
-    if (!result) {
-        spdlog::warn(
-            "handler for `{}` on `{}` was already present, the new one is "
-            "ignored",
-            format_method(method), target);
-    }
-    return result;
+    return route(method, target,
+                 [handler](const Request&, const Params params) {
+                     return handler(params);
+                 });
 }
 
 bool Server::route(const HttpMethod method, const std::string_view target,
                    const std::function<std::unique_ptr<Response>(
                        Request const&, const Params)>& handler) noexcept {
-    const bool result = router_.add_route(target, method, handler);
+    const bool result = router_.add_route(method, target, handler);
 
     if (!result) {
         spdlog::warn(
@@ -278,6 +253,10 @@ bool Server::route(const HttpMethod method, const std::string_view target,
 
 void Server::print_route_tree() const noexcept {
     router_.print_tree();
+}
+
+void Server::set_not_found_handler(internal::RequestHandler handler) {
+    router_.set_not_found_handler(handler);
 }
 
 Result<void, std::string> Server::bind(const std::string_view address,
@@ -293,12 +272,13 @@ Result<void, std::string> Server::bind(const std::string_view address,
 }
 
 void Server::serve() const noexcept {
-    concurrency::ThreadPool thrd_pool;
+    concurrency::ThreadPool thread_pool{std::thread::hardware_concurrency() -
+                                        1};
 
     for (;;) {
         Connection connection = socket_.accept();
         if (connection.is_valid()) {
-            thrd_pool.async([this, conn = std::move(connection)]() mutable {
+            thread_pool.async([this, conn = std::move(connection)]() mutable {
                 handle_connection(router_, std::move(conn));
             });
         }

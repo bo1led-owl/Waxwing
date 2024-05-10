@@ -95,7 +95,7 @@ void Router::RouteNode::print(const uint8_t layer,
     }
 }
 
-void Router::set_not_found_handler(const RequestHandler& handler) noexcept {
+void Router::set_not_found_handler(RequestHandler handler) noexcept {
     not_found_handler_ = handler;
 }
 
@@ -103,7 +103,7 @@ void Router::print_tree() const noexcept {
     root_->print();
 }
 
-bool Router::add_route(const std::string_view target, const HttpMethod method,
+bool Router::add_route(HttpMethod method, std::string_view target,
                        const RequestHandler& handler) noexcept {
     RouteNode* cur_node = root_.get();
     str_util::Split split = str_util::split(target, '/');
@@ -143,7 +143,7 @@ bool Router::add_route(const std::string_view target, const HttpMethod method,
 }
 
 std::pair<RequestHandler, std::vector<std::string_view>> Router::route(
-    const std::string_view target, const HttpMethod method) const noexcept {
+    const HttpMethod method, const std::string_view target) const noexcept {
     std::vector<std::string_view> params;
 
     RouteNode const* cur_node = root_.get();
