@@ -97,10 +97,11 @@ public:
         Body(const ContentType type, T&& data)
             : type{format_content_type(type)}, data{std::forward<T>(data)} {}
 
-        template <typename T, typename U>
-            requires(std::is_constructible_v<std::string, T>) &&
-                        (std::is_constructible_v<std::string, U>)
-        Body(T&& type, U&& data) : type{type}, data{std::forward<T>(data)} {}
+        template <typename S1, typename S2>
+            requires(std::is_constructible_v<std::string, S1>) &&
+                        (std::is_constructible_v<std::string, S2>)
+        Body(S1&& type, S2&& data)
+            : type{std::forward<S1>(type)}, data{std::forward<S2>(data)} {}
     };
 
 private:
@@ -118,8 +119,8 @@ public:
     Response(const Response&) = delete;
     Response& operator=(const Response&) = delete;
 
-    Response(Response&& rhs);
-    Response& operator=(Response&&);
+    Response(Response&& rhs) noexcept;
+    Response& operator=(Response&&) noexcept;
 
     StatusCode status() const noexcept;
     Headers& headers() noexcept;

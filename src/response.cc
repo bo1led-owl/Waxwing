@@ -3,7 +3,6 @@
 #include <sys/socket.h>
 
 namespace waxwing {
-using namespace internal;
 std::string_view format_content_type(const ContentType content_type) noexcept {
     switch (content_type) {
         case ContentType::Text:
@@ -152,12 +151,12 @@ std::string_view format_status(const StatusCode code) noexcept {
     }
 }
 
-Response::Response(Response&& rhs)
+Response::Response(Response&& rhs) noexcept
     : status_code_{rhs.status_code_},
       headers_{std::move(rhs.headers_)},
       body_{std::move(rhs.body_)} {}
 
-Response& Response::operator=(Response&& rhs) {
+Response& Response::operator=(Response&& rhs) noexcept {
     std::swap(status_code_, rhs.status_code_);
     std::swap(headers_, rhs.headers_);
     std::swap(body_, rhs.body_);

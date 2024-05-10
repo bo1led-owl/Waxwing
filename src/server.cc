@@ -21,7 +21,10 @@
 #include "waxwing/types.hh"
 
 namespace waxwing {
-using namespace internal;
+using internal::Connection;
+using internal::Router;
+using internal::Socket;
+using internal::concurrency::ThreadPool;
 
 namespace {
 std::pair<std::string, std::string> parse_header(const std::string_view line) {
@@ -89,8 +92,8 @@ std::optional<std::pair<HttpMethod, std::string>> parse_request_line(
 }
 
 Result<size_t, std::string> parse_content_length(const Headers& headers) {
-    size_t content_length;
-    std::string_view raw_content_length =
+    size_t content_length = 0;
+    const std::string_view raw_content_length =
         headers.find("content-length")->second;
 
     const std::errc error_code =
@@ -100,8 +103,9 @@ Result<size_t, std::string> parse_content_length(const Headers& headers) {
     if (error_code != std::errc{}) {
         return Error{fmt::format("couldn't parse `Content-Length`: {}",
                                  std::make_error_code(error_code).message())};
+    } else {
+        return content_length;
     }
-    return content_length;
 }
 
 Result<std::unique_ptr<Request>, std::string> read_request(
@@ -201,7 +205,7 @@ void handle_connection(const Router& router, Connection connection) {
         return;
     }
 
-    Request& req = *req_res.value();
+    const Request& req = *req_res.value();
 
     auto [handler, params] = router.route(req.method(), req.target());
 
@@ -272,8 +276,7 @@ Result<void, std::string> Server::bind(const std::string_view address,
 }
 
 void Server::serve() const noexcept {
-    concurrency::ThreadPool thread_pool{std::thread::hardware_concurrency() -
-                                        1};
+    ThreadPool thread_pool{std::thread::hardware_concurrency() - 1};
 
     for (;;) {
         Connection connection = socket_.accept();

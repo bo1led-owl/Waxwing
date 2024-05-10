@@ -6,8 +6,7 @@
 
 #include "str_split.hh"
 
-namespace waxwing {
-namespace internal {
+namespace waxwing::internal {
 std::string_view Router::RouteNode::parse_key(
     const std::string_view key) noexcept {
     if (key.empty()) {
@@ -106,7 +105,7 @@ void Router::print_tree() const noexcept {
 bool Router::add_route(HttpMethod method, std::string_view target,
                        const RequestHandler& handler) noexcept {
     RouteNode* cur_node = root_.get();
-    str_util::Split split = str_util::split(target, '/');
+    const str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
     if (target.starts_with('/')) {
         ++iter;
@@ -147,7 +146,7 @@ std::pair<RequestHandler, std::vector<std::string_view>> Router::route(
     std::vector<std::string_view> params;
 
     RouteNode const* cur_node = root_.get();
-    str_util::Split split = str_util::split(target, '/');
+    const str_util::Split split = str_util::split(target, '/');
     auto iter = split.begin();
     if (target.starts_with('/')) {
         ++iter;
@@ -187,5 +186,4 @@ std::pair<RequestHandler, std::vector<std::string_view>> Router::route(
 
     return {handler_it->second, std::move(params)};
 }
-}  // namespace internal
-}  // namespace waxwing
+}  // namespace waxwing::internal

@@ -8,10 +8,9 @@
 
 #include "waxwing/result.hh"
 
-namespace waxwing {
-namespace internal {
+namespace waxwing::internal {
 class FileDescriptor {
-protected:
+private:
     int fd_;
 
     FileDescriptor() : fd_(-1) {}
@@ -23,7 +22,11 @@ public:
     FileDescriptor(const FileDescriptor&) = delete;
     FileDescriptor& operator=(const FileDescriptor&) = delete;
 
+    FileDescriptor(FileDescriptor&&) = default;
+    FileDescriptor& operator=(FileDescriptor&&) = default;
+
     bool is_valid() const;
+    int fd() const noexcept;
 };
 
 class Connection final : public FileDescriptor {
@@ -34,7 +37,7 @@ public:
     Connection& operator=(const Connection&) = delete;
 
     Connection(Connection&&) noexcept;
-    Connection& operator=(Connection&&) noexcept;
+    Connection& operator=(Connection&&) noexcept = default;
 
     size_t recv(std::string& s, size_t n) const;
     size_t send(std::span<char> s) const;
@@ -53,9 +56,8 @@ public:
     Socket& operator=(const Socket&) = delete;
 
     Socket(Socket&&) noexcept;
-    Socket& operator=(Socket&&) noexcept;
+    Socket& operator=(Socket&&) noexcept = default;
 
     Connection accept() const;
 };
-}  // namespace internal
-}  // namespace waxwing
+}  // namespace waxwing::internal

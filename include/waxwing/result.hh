@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstddef>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <type_traits>
-#include <variant>
 
 namespace waxwing {
 template <typename E>
@@ -28,35 +27,44 @@ template <typename U>
 static constexpr bool is_result = false;
 template <typename U, typename G>
 static constexpr bool is_result<Result<U, G>> = true;
+
+template <typename T>
+static constexpr bool can_be_error =
+    std::is_object_v<T> && !std::is_array_v<T> && !std::is_const_v<T> &&
+    !std::is_volatile_v<T> && !std::is_reference_v<T>;
+
+template <typename T>
+static constexpr bool can_be_value =
+    (std::is_object_v<T> && !std::is_array_v<T> && !std::is_const_v<T> &&
+     !std::is_volatile_v<T> && !std::is_reference_v<T>) ||
+    std::is_void_v<T>;
 }  // namespace result
 
 template <typename E>
-class Error {
-    template <typename T>
-    static constexpr bool can_be_error =
-        (std::is_object_v<T>)&&(!std::is_array_v<T>)&&(!std::is_const_v<T>)&&(
-            !std::is_volatile_v<T>)&&(!std::is_reference_v<T>);
-
-    static_assert(!result::is_error<E> && can_be_error<E>);
+class Error final {
+    static_assert(!result::is_error<E> && result::can_be_error<E>);
 
     E value_;
 
 public:
-    template <typename Err = E>
+    // explicit constexpr Error(const E& err) : value_{err} {}
+    // explicit constexpr Error(E&& err) : value_{std::move(err)} {}
+
+    template <typename Err>
         requires(!result::is_error<Err>) && (std::is_constructible_v<E, Err>)
     explicit constexpr Error(Err&& err) : value_{std::forward<Err>(err)} {}
 
-    [[nodiscard]] constexpr E& error() & {
+    [[nodiscard]] constexpr E& error() & noexcept {
         return value_;
     }
-    [[nodiscard]] constexpr E const& error() const& {
+    [[nodiscard]] constexpr E const& error() const& noexcept {
         return value_;
     }
-    [[nodiscard]] constexpr E&& error() && {
-        return value_;
+    [[nodiscard]] constexpr E&& error() && noexcept {
+        return std::move(value_);
     }
-    [[nodiscard]] constexpr E const&& error() const&& {
-        return value_;
+    [[nodiscard]] constexpr E const&& error() const&& noexcept {
+        return std::move(value_);
     }
 };
 
@@ -64,19 +72,33 @@ template <typename E>
 Error(E) -> Error<E>;
 
 template <typename T, typename E>
-class Result {
-    static_assert(!result::is_result<T> && !result::is_error<E>);
-
-    static constexpr size_t VALUE = 0;
-    static constexpr size_t ERROR = 1;
+class Result final {
+    static_assert(!result::is_result<T> && !result::is_error<T> &&
+                  result::can_be_value<T> && !result::is_result<E> &&
+                  !result::is_error<E> && result::can_be_error<E>);
 
     bool has_value_;
 
-    using value_type = std::conditional_t<std::is_void_v<T>, std::monostate, T>;
+    using value_type = std::conditional_t<std::is_void_v<T>, char, T>;
     using error_type = E;
-    std::variant<value_type, error_type> value_;
+    union {
+        value_type value_;
+        error_type error_;
+    };
 
 public:
+    ~Result() {
+        if (has_value_) {
+            if constexpr (std::is_destructible_v<value_type>) {
+                value_.~value_type();
+            }
+        } else {
+            if constexpr (std::is_destructible_v<error_type>) {
+                error_.~error_type();
+            }
+        }
+    }
+
     constexpr Result()
         requires(std::is_void_v<T> || std::is_default_constructible_v<T>)
         : has_value_{true}, value_{} {}
@@ -84,18 +106,24 @@ public:
     template <typename U = T>
         requires(!result::is_result<U>) && (std::is_constructible_v<T, U>)
     explicit(!std::is_convertible_v<U, T>) constexpr Result(U&& value)
-        : has_value_{true}, value_{std::forward<U>(value)} {}
+        : has_value_{true} {
+        std::construct_at(std::addressof(value_), std::forward<U>(value));
+    }
 
     template <typename G = E>
         requires(std::is_constructible_v<E, G>)
     explicit(!std::is_convertible_v<const G&, E>) constexpr Result(
         const Error<G>& error)
-        : has_value_{false}, value_{std::forward<const G&>(error.error())} {}
+        : has_value_{false} {
+        std::construct_at(std::addressof(error_), error.error());
+    }
 
     template <typename G = E>
         requires(std::is_constructible_v<E, G>)
     explicit(!std::is_convertible_v<G, E>) constexpr Result(Error<G>&& error)
-        : has_value_{false}, value_{std::forward<G>(error.error())} {}
+        : has_value_{false} {
+        std::construct_at(std::addressof(error_), std::move(error).error());
+    }
 
     template <typename U = T, typename G = E>
         requires(!result::is_result<U>) &&
@@ -103,9 +131,9 @@ public:
                 (std::is_constructible_v<E, const G&>)
     constexpr Result(const Result<U, G>& res) : has_value_{res.has_value()} {
         if (has_value_) {
-            std::get<VALUE>(value_) = res.error();
+            std::construct_at(std::addressof(value_), res.value_.value);
         } else {
-            std::get<ERROR>(value_) = res.value();
+            std::construct_at(std::addressof(error_), res.value);
         }
     }
 
@@ -114,9 +142,11 @@ public:
                 (std::is_constructible_v<E, G>)
     constexpr Result(Result<U, G>&& res) : has_value_{res.has_value()} {
         if (has_value_) {
-            std::get<VALUE>(value_) = std::move(res.error());
+            std::construct_at(std::addressof(value_),
+                              std::move(res).value_.value);
         } else {
-            std::get<ERROR>(value_) = std::move(res.value());
+            std::construct_at(std::addressof(error_),
+                              std::move(res).value_.error);
         }
     }
 
@@ -135,46 +165,58 @@ public:
     [[nodiscard]] constexpr const T* operator->() const noexcept
         requires(!std::is_void_v<T>)
     {
-        return &std::get<VALUE>(value_);
+        return std::addressof(value_);
     }
     [[nodiscard]] constexpr T* operator->() noexcept
         requires(!std::is_void_v<T>)
     {
-        return &std::get<VALUE>(value_);
+        return std::addressof(value_);
     }
 
     [[nodiscard]] constexpr const value_type& operator*() const& noexcept {
-        return std::get<VALUE>(value_);
+        return value_;
     }
     [[nodiscard]] constexpr value_type& operator*() & noexcept {
-        return std::get<VALUE>(value_);
+        return value_;
     }
     [[nodiscard]] constexpr const value_type&& operator*() const&& noexcept {
-        return std::get<VALUE>(value_);
+        return std::move(value_);
     }
     [[nodiscard]] constexpr value_type&& operator*() && noexcept {
-        return std::get<VALUE>(value_);
+        return std::move(value_);
     }
 
     [[nodiscard]] constexpr value_type& value() &
         requires(!std::is_void_v<T>)
     {
-        return std::get<VALUE>(value_);
+        return value_;
     }
     [[nodiscard]] constexpr value_type const& value() const&
         requires(!std::is_void_v<T>)
     {
-        return std::get<VALUE>(value_);
+        if (!has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `value` of `Result` which doesn't have a value");
+        }
+        return value_;
     }
     [[nodiscard]] constexpr value_type&& value() &&
         requires(!std::is_void_v<T>)
     {
-        return std::get<VALUE>(value_);
+        if (!has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `value` of `Result` which doesn't have a value");
+        }
+        return std::move(value_);
     }
     [[nodiscard]] constexpr value_type const&& value() const&&
         requires(!std::is_void_v<T>)
     {
-        return std::get<VALUE>(value_);
+        if (!has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `value` of `Result` which doesn't have a value");
+        }
+        return std::move(value_);
     }
 
     template <typename U = T>
@@ -182,7 +224,7 @@ public:
         requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
     {
         if (has_value_) {
-            return std::get<VALUE>(value_);
+            return value_;
         }
         return value_type{std::forward<U>(default_value)};
     }
@@ -192,7 +234,7 @@ public:
         requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
     {
         if (has_value_) {
-            return std::get<VALUE>(value_);
+            return std::move(value_);
         }
         return value_type{std::forward<U>(default_value)};
     }
@@ -200,28 +242,40 @@ public:
     [[nodiscard]] constexpr error_type& error() &
         requires(!std::is_void_v<E>)
     {
-        return std::get<ERROR>(value_);
+        return error_;
     }
     [[nodiscard]] constexpr error_type const& error() const&
         requires(!std::is_void_v<E>)
     {
-        return std::get<ERROR>(value_);
+        if (has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `error` of `Result` which has a value");
+        }
+        return error_;
     }
     [[nodiscard]] constexpr error_type&& error() &&
         requires(!std::is_void_v<E>)
     {
-        return std::get<ERROR>(value_);
+        if (has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `error` of `Result` which has a value");
+        }
+        return std::move(error_);
     }
     [[nodiscard]] constexpr error_type const&& error() const&&
         requires(!std::is_void_v<E>)
     {
-        return std::get<ERROR>(value_);
+        if (has_value_) [[unlikely]] {
+            throw std::logic_error(
+                "Accessing `error` of `Result` which has a value");
+        }
+        return std::move(error_);
     }
 
     template <typename F, typename U>
     constexpr Result<U, E> map(F&& f) const& {
         if (has_value()) {
-            return Result{std::invoke(std::forward<F>(f), value())};
+            return Result{std::invoke(std::forward<F>(f), value_)};
         }
         return *this;
     }
@@ -229,7 +283,23 @@ public:
     template <typename F, typename U>
     constexpr Result<U, E> map(F&& f) && {
         if (has_value()) {
-            return Result{std::invoke(std::forward<F>(f), value())};
+            return Result{std::invoke(std::forward<F>(f), std::move(value_))};
+        }
+        return *this;
+    }
+
+    template <typename F, typename U>
+    constexpr Result<U, E> and_then(F&& f) const& {
+        if (has_value()) {
+            return std::invoke(std::forward<F>(f), value_);
+        }
+        return *this;
+    }
+
+    template <typename F, typename U>
+    constexpr Result<U, E> and_then(F&& f) && {
+        if (has_value()) {
+            return std::invoke(std::forward<F>(f), std::move(value_));
         }
         return *this;
     }
@@ -240,17 +310,17 @@ template <typename T, typename F>
 constexpr auto and_then(std::optional<T> opt, F&& f) {
     using U = std::remove_cv_t<std::invoke_result_t<F, T&>>;
     if (opt.has_value()) {
-        return std::invoke(f, *opt);
+        return std::invoke(std::forward<F>(f), *opt);
     } else {
         return U{};
     }
 }
 
 template <typename T, typename F>
-constexpr auto map(std::optional<T> opt, F f) {
+constexpr auto map(std::optional<T> opt, F&& f) {
     using U = std::remove_cv_t<std::invoke_result_t<F, T&>>;
     if (opt.has_value()) {
-        return std::optional{std::invoke(f, opt.value())};
+        return std::optional{std::invoke(std::forward<F>(f), *opt)};
     }
     return std::optional<U>{};
 }

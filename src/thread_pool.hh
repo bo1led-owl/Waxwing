@@ -10,9 +10,7 @@
 
 #include "movable_function.hh"
 
-namespace waxwing {
-namespace internal {
-namespace concurrency {
+namespace waxwing::internal::concurrency {
 using Task = MovableFunction<void()>;
 
 class TaskQueue {
@@ -30,7 +28,7 @@ class TaskQueue {
     }
 
 public:
-    TaskQueue() : mut_{}, cond_{} {}
+    TaskQueue() = default;
 
     bool try_push(Task&& f) {
         {
@@ -78,14 +76,14 @@ public:
 
     void done() {
         {
-            std::unique_lock<std::mutex> lock{mut_};
+            const std::unique_lock<std::mutex> lock{mut_};
             done_ = true;
         }
         cond_.notify_all();
     }
 
     bool is_empty_and_done() {
-        std::unique_lock<std::mutex> l{mut_};
+        const std::unique_lock<std::mutex> lock{mut_};
         return is_done() && is_empty();
     }
 };
@@ -141,6 +139,4 @@ public:
         queues_[cur & num_threads_].push(std::move(f));
     }
 };
-}  // namespace concurrency
-}  // namespace internal
-}  // namespace waxwing
+}  // namespace waxwing::internal::concurrency

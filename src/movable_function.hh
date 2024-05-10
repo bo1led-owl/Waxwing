@@ -4,20 +4,21 @@
 #include <memory>
 #include <utility>
 
-namespace waxwing {
-namespace internal {
+namespace waxwing::internal {
 namespace function {
 template <typename R, typename... Args>
 struct FunctorContainerBase {
-    virtual ~FunctorContainerBase() {}
+    virtual ~FunctorContainerBase() = default;
     virtual R operator()(Args&&...) = 0;
 };
 
 template <typename F, typename R, typename... Args>
-struct FunctorContainer final : FunctorContainerBase<R, Args...> {
+class FunctorContainer final : public FunctorContainerBase<R, Args...> {
     F f;
 
-    FunctorContainer(F&& f) : f{std::forward<F>(f)} {}
+public:
+    FunctorContainer(const F& f) : f{f} {}
+    FunctorContainer(F&& f) : f{std::move(f)} {}
 
     R operator()(Args&&... args) override {
         return std::invoke(f, std::forward<Args>(args)...);
@@ -45,9 +46,8 @@ public:
     MovableFunction(const MovableFunction&) = delete;
     MovableFunction& operator=(const MovableFunction& other) = delete;
 
-    MovableFunction(MovableFunction&& other) noexcept {
-        f_ = std::exchange(other.f_, nullptr);
-    }
+    MovableFunction(MovableFunction&& other) noexcept
+        : f_{std::exchange(other.f_, nullptr)} {}
 
     MovableFunction& operator=(MovableFunction&& other) noexcept {
         std::swap(f_, other.f_);
@@ -63,5 +63,4 @@ public:
     }
 };
 
-}  // namespace internal
-}  // namespace waxwing
+}  // namespace waxwing::internal

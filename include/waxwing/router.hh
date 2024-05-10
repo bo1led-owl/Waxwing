@@ -10,8 +10,7 @@
 #include "response.hh"
 #include "types.hh"
 
-namespace waxwing {
-namespace internal {
+namespace waxwing::internal {
 using RequestHandler =
     std::function<std::unique_ptr<Response>(Request const&, const Params)>;
 
@@ -66,5 +65,4 @@ public:
     void set_not_found_handler(RequestHandler handler) noexcept;
     void print_tree() const noexcept;
 };
-}  // namespace internal
-}  // namespace waxwing
+}  // namespace waxwing::internal

@@ -5,8 +5,7 @@
 #include <optional>
 #include <string_view>
 
-namespace waxwing {
-namespace str_util {
+namespace waxwing::str_util {
 template <typename Sep>
     requires(std::convertible_to<Sep, std::string_view> ||
              std::convertible_to<Sep, char>)
@@ -122,5 +121,4 @@ constexpr Split<std::string_view> split(std::string_view str,
 constexpr Split<char> split(std::string_view str, char sep) {
     return Split(str, sep);
 }
-}  // namespace str_util
-}  // namespace waxwing
+}  // namespace waxwing::str_util

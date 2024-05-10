@@ -5,8 +5,7 @@
 #include <string>
 #include <string_view>
 
-namespace waxwing {
-namespace str_util {
+namespace waxwing::str_util {
 constexpr std::string_view ltrim(const std::string_view s) {
     const std::string_view::iterator first_non_whitespace =
         std::ranges::find_if(s, [](const char c) { return !std::isspace(c); });
@@ -31,5 +30,4 @@ constexpr std::string to_lower(const std::string_view s) {
     std::for_each(res.begin(), res.end(), [](char& c) { c = std::tolower(c); });
     return res;
 }
-}  // namespace str_util
-}  // namespace waxwing
+}  // namespace waxwing::str_util

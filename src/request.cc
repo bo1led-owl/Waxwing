@@ -3,8 +3,6 @@
 #include "str_util.hh"
 
 namespace waxwing {
-using namespace internal;
-
 std::string_view format_method(const HttpMethod method) noexcept {
     switch (method) {
         case HttpMethod::Get:
@@ -98,8 +96,7 @@ HttpMethod Request::method() const noexcept {
 
 std::optional<std::string_view> Request::header(
     const std::string_view key) const noexcept {
-    const Headers::const_iterator result =
-        headers_.find(str_util::to_lower(key));
+    const auto result = headers_.find(str_util::to_lower(key));
     if (result == headers_.end()) {
         return std::nullopt;
     }
