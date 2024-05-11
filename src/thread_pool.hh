@@ -13,7 +13,7 @@
 namespace waxwing::internal::concurrency {
 using Task = MovableFunction<void()>;
 
-class TaskQueue {
+class TaskQueue final {
     std::queue<Task> repr_;
     std::mutex mut_;
     std::condition_variable cond_;
@@ -88,7 +88,7 @@ public:
     }
 };
 
-class ThreadPool {
+class ThreadPool final {
     const unsigned num_threads_;
     std::vector<TaskQueue> queues_;
     std::vector<std::jthread> threads_;

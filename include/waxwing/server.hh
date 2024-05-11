@@ -9,23 +9,24 @@
 #include "router.hh"
 
 namespace waxwing {
-class Server {
+class Server final {
     internal::Router router_;
     internal::Socket socket_;
 
 public:
-    bool route(
+    void route(
         HttpMethod method, std::string_view target,
         const std::function<std::unique_ptr<Response>()>& handler) noexcept;
-    bool route(HttpMethod method, std::string_view target,
+    void route(HttpMethod method, std::string_view target,
                const std::function<std::unique_ptr<Response>(Request const&)>&
                    handler) noexcept;
-    bool route(HttpMethod method, std::string_view target,
-               const std::function<std::unique_ptr<Response>(const Params)>&
-                   handler) noexcept;
-    bool route(HttpMethod method, std::string_view target,
+    void route(
+        HttpMethod method, std::string_view target,
+        const std::function<std::unique_ptr<Response>(const PathParameters)>&
+            handler) noexcept;
+    void route(HttpMethod method, std::string_view target,
                const std::function<std::unique_ptr<Response>(
-                   Request const&, const Params)>& handler) noexcept;
+                   Request const&, const PathParameters)>& handler) noexcept;
 
     void set_not_found_handler(internal::RequestHandler handler);
 

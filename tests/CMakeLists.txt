@@ -27,5 +27,5 @@ add_test_target(test
   result.cc
 )
 
-target_compile_options(test PUBLIC -fsanitize=address,undefined)
-target_link_options(test PUBLIC -fsanitize=address,undefined)
+target_compile_options(test PRIVATE -fsanitize=address,undefined)
+target_link_options(test PRIVATE -fsanitize=address,undefined)

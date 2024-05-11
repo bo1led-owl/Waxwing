@@ -29,7 +29,7 @@ class Request {
     HttpMethod method_;
     std::string target_;
     Headers headers_;
-    Params params_;
+    PathParameters params_;
     std::string body_;
 
     Request(HttpMethod method, std::string&& target, Headers&& headers,

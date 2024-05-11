@@ -9,7 +9,7 @@
 
 #include "waxwing/server.hh"
 
-auto name(const waxwing::Params params) {
+auto name(const waxwing::PathParameters params) {
     std::string body = fmt::format("Requested user \"{}\"", params[0]);
 
     return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
@@ -17,7 +17,7 @@ auto name(const waxwing::Params params) {
         .build();
 }
 
-auto name_action(const waxwing::Params params) {
+auto name_action(const waxwing::PathParameters params) {
     std::stringstream ss;
     ss << "Requested " << std::quoted(params[1]) << " on "
        << std::quoted(params[0]);

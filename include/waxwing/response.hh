@@ -84,7 +84,7 @@ enum class StatusCode {
 std::string_view format_content_type(ContentType content_type) noexcept;
 std::string_view format_status(StatusCode code) noexcept;
 
-class Response {
+class Response final {
     friend class ResponseBuilder;
 
 public:

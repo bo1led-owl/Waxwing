@@ -207,52 +207,47 @@ void handle_connection(const Router& router, Connection connection) {
 
     const Request& req = *req_res.value();
 
-    auto [handler, params] = router.route(req.method(), req.target());
+    internal::RouteResult route = router.route(req.method(), req.target());
 
-    std::unique_ptr<Response> resp = handler(req, params);
+    std::unique_ptr<Response> resp = route.handler()(req, route.parameters());
     spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
                  format_status(resp->status()));
     send_response(connection, *resp);
 }
 }  // namespace
 
-bool Server::route(
+void Server::route(
     const HttpMethod method, const std::string_view target,
     const std::function<std::unique_ptr<Response>()>& handler) noexcept {
-    return route(method, target,
-                 [handler](const Request&, const Params) { return handler(); });
+    route(method, target, [handler](const Request&, const PathParameters) {
+        return handler();
+    });
 }
 
-bool Server::route(
+void Server::route(
     const HttpMethod method, const std::string_view target,
     const std::function<std::unique_ptr<Response>(Request const&)>&
         handler) noexcept {
-    return route(method, target, [handler](const Request& req, const Params) {
+    route(method, target, [handler](const Request& req, const PathParameters) {
         return handler(req);
     });
 }
 
-bool Server::route(const HttpMethod method, const std::string_view target,
-                   const std::function<std::unique_ptr<Response>(const Params)>&
-                       handler) noexcept {
-    return route(method, target,
-                 [handler](const Request&, const Params params) {
-                     return handler(params);
-                 });
+void Server::route(
+    const HttpMethod method, const std::string_view target,
+    const std::function<std::unique_ptr<Response>(const PathParameters)>&
+        handler) noexcept {
+    route(method, target,
+          [handler](const Request&, const PathParameters params) {
+              return handler(params);
+          });
 }
 
-bool Server::route(const HttpMethod method, const std::string_view target,
-                   const std::function<std::unique_ptr<Response>(
-                       Request const&, const Params)>& handler) noexcept {
-    const bool result = router_.add_route(method, target, handler);
-
-    if (!result) {
-        spdlog::warn(
-            "handler for `{}` on `{}` was already present, the new one is "
-            "ignored",
-            format_method(method), target);
-    }
-    return result;
+void Server::route(
+    const HttpMethod method, const std::string_view target,
+    const std::function<std::unique_ptr<Response>(
+        Request const&, const PathParameters)>& handler) noexcept {
+    router_.add_route(method, target, handler);
 }
 
 void Server::print_route_tree() const noexcept {

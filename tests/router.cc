@@ -4,78 +4,111 @@
 #include <gtest/gtest.h>
 
 namespace waxwing {
-using waxwing::internal::Router;
+using waxwing::internal::RouteTree;
 
 TEST(Router, Basic) {
-    auto foo = [](const Request&, const Params) {
+    auto foo = [](const Request&, const PathParameters) {
         return ResponseBuilder{StatusCode::Ok}
             .body(ContentType::Text, "foo")
             .build();
     };
 
-    auto bar = [](const Request&, const Params) {
+    auto bar = [](const Request&, const PathParameters) {
         return ResponseBuilder{StatusCode::Ok}
             .body(ContentType::Text, "bar")
             .build();
     };
 
-    Router router;
-    router.add_route(HttpMethod::Get, "/foo", foo);
-    router.add_route(HttpMethod::Get, "bar", bar);
+    RouteTree tree;
+    tree.insert(HttpMethod::Get, "/foo", foo);
+    tree.insert(HttpMethod::Get, "bar", bar);
 
     auto req = RequestBuilder(HttpMethod::Get, "").build();
 
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "/foo").first)(*req, {})->body()->data,
-        "foo");
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "/bar").first)(*req, {})->body()->data,
-        "bar");
+    auto result = tree.get(HttpMethod::Get, "/foo");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((result->handler())(*req, {})->body()->data, "foo");
 
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "foo").first)(*req, {})->body()->data,
-        "foo");
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "bar").first)(*req, {})->body()->data,
-        "bar");
+    result = tree.get(HttpMethod::Get, "/bar");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((result->handler())(*req, {})->body()->data, "bar");
 
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "/unknown").first)(*req, {})->status(),
-        StatusCode::NotFound);
+    result = tree.get(HttpMethod::Get, "foo");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((result->handler())(*req, {})->body()->data, "foo");
+
+    result = tree.get(HttpMethod::Get, "bar");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((result->handler())(*req, {})->body()->data, "bar");
+
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "/unknown").has_value());
 }
 
-TEST(Router, PathParameters) {
-    auto foo_bar = [](const Request&, const Params params) {
+TEST(Router, PathParametersBasic) {
+    auto foo_bar = [](const Request&, const PathParameters params) {
         return ResponseBuilder{StatusCode::Ok}
             .body(ContentType::Text, fmt::format("{}{}", params[0], params[1]))
             .build();
     };
 
-    Router router;
-    router.add_route(HttpMethod::Get, "/:foo/*bar", foo_bar);
+    RouteTree tree;
+    tree.insert(HttpMethod::Get, "/:foo/*bar", foo_bar);
 
     auto req = RequestBuilder(HttpMethod::Get, "").build();
 
-    auto expect_path_result = [&router, &req](std::string_view path,
-                                              HttpMethod method,
-                                              std::string_view result) {
-        auto [handler, params] = router.route(method, path);
-        EXPECT_EQ(handler(*req, params)->body()->data, result);
+    auto expect_path_result = [&tree, &req](std::string_view path,
+                                            HttpMethod method,
+                                            std::string_view result) {
+        auto opt = tree.get(method, path);
+        ASSERT_TRUE(opt.has_value());
+        EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
+                  result);
     };
 
     expect_path_result("/foo/", HttpMethod::Get, "foo");
     expect_path_result("foo/bar", HttpMethod::Get, "foobar");
     expect_path_result("1/2", HttpMethod::Get, "12");
 
-    EXPECT_EQ((router.route(HttpMethod::Get, "/").first)(*req, {})->status(),
-              StatusCode::NotFound);
-    EXPECT_EQ((router.route(HttpMethod::Get, "").first)(*req, {})->status(),
-              StatusCode::NotFound);
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "/hello").first)(*req, {})->status(),
-        StatusCode::NotFound);
-    EXPECT_EQ(
-        (router.route(HttpMethod::Get, "hello").first)(*req, {})->status(),
-        StatusCode::NotFound);
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "/").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "/hello").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "hello").has_value());
+}
+
+TEST(Router, PathParametersRollback) {
+    auto foo = [](const Request&, const PathParameters) {
+        return ResponseBuilder{StatusCode::Ok}
+            .body(ContentType::Text, fmt::format("foo"))
+            .build();
+    };
+
+    auto foo_bar = [](const Request&, const PathParameters) {
+        return ResponseBuilder{StatusCode::Ok}
+            .body(ContentType::Text, fmt::format("params"))
+            .build();
+    };
+
+    RouteTree tree;
+    tree.insert(HttpMethod::Get, "/foo/bar", foo);
+    tree.insert(HttpMethod::Get, "/:foo/", foo_bar);
+
+    auto req = RequestBuilder(HttpMethod::Get, "").build();
+
+    auto expect_path_result = [&tree, &req](std::string_view path,
+                                            HttpMethod method,
+                                            std::string_view result) {
+        auto opt = tree.get(method, path);
+        ASSERT_TRUE(opt.has_value());
+        EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
+                  result);
+    };
+
+    expect_path_result("/foo/", HttpMethod::Get, "params");
+    expect_path_result("/foo/bar", HttpMethod::Get, "foo");
+
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "/").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "/hello").has_value());
+    EXPECT_FALSE(tree.get(HttpMethod::Get, "hello").has_value());
 }
 }  // namespace waxwing

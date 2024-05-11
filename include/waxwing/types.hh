@@ -27,5 +27,5 @@ struct string_hash {
 
 using Headers = std::unordered_map<std::string, std::string,
                                    internal::string_hash, std::equal_to<>>;
-using Params = std::span<std::string_view>;
+using PathParameters = std::span<std::string_view const>;
 }  // namespace waxwing
