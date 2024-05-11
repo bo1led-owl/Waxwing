@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 namespace waxwing {
+using waxwing::internal::Router;
 using waxwing::internal::RouteTree;
 
 TEST(Router, Basic) {
@@ -110,5 +111,15 @@ TEST(Router, PathParametersRollback) {
     EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/hello").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "hello").has_value());
+}
+
+TEST(Router, Exceptions) {
+    auto foo = [](const Request&, const PathParameters) {
+        return ResponseBuilder{StatusCode::Ok}.build();
+    };
+
+    Router r;
+    EXPECT_NO_THROW(r.add_route(HttpMethod::Get, "/foo", foo));
+    EXPECT_THROW(r.add_route(HttpMethod::Get, "/foo", foo), std::invalid_argument);
 }
 }  // namespace waxwing
