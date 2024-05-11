@@ -24,6 +24,7 @@ add_test_target(test
   str_utils.cc
   thread_pool.cc
   router.cc
+  result.cc
 )
 
 target_compile_options(test PUBLIC -fsanitize=address,undefined)

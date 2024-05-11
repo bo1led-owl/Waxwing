@@ -3,9 +3,8 @@
 #include <fmt/core.h>
 #include <gtest/gtest.h>
 
-namespace {
-using namespace waxwing;
-using namespace waxwing::internal;
+namespace waxwing {
+using waxwing::internal::Router;
 
 TEST(Router, Basic) {
     auto foo = [](const Request&, const Params) {
@@ -79,4 +78,4 @@ TEST(Router, PathParameters) {
         (router.route(HttpMethod::Get, "hello").first)(*req, {})->status(),
         StatusCode::NotFound);
 }
-}  // namespace
+}  // namespace waxwing

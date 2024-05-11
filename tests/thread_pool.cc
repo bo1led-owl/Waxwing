@@ -3,8 +3,7 @@
 #include <gtest/gtest.h>
 
 namespace {
-using namespace waxwing::internal;
-using namespace waxwing::internal::concurrency;
+using waxwing::internal::concurrency::ThreadPool;
 
 TEST(ThreadPool, SingleProducer) {
     constexpr const int TASKS = 128;
@@ -24,6 +23,7 @@ TEST(ThreadPool, MultipleProducers) {
     constexpr const int TASKS = 256;
     constexpr const size_t CONSUMERS = 4;
     constexpr const int PRODUCERS = 4;
+
     ASSERT_EQ(TASKS % PRODUCERS, 0);
 
     std::atomic<int> consumed = 0;
@@ -31,6 +31,7 @@ TEST(ThreadPool, MultipleProducers) {
     {
         ThreadPool pool{CONSUMERS};
         std::vector<std::jthread> producers;
+        producers.reserve(PRODUCERS);
         for (int i = 0; i < PRODUCERS; ++i) {
             producers.emplace_back([&consumed, &pool, &produced]() {
                 for (int i = 0; i < TASKS / PRODUCERS; ++i) {

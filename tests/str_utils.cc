@@ -6,8 +6,7 @@
 using namespace std::literals;
 
 namespace {
-using namespace waxwing::str_util;
-
+using waxwing::str_util::split;
 TEST(Split, CharacterSeparatorBasic) {
     auto iter = split("hello world", ' ');
     const std::vector<std::string_view> words{"hello", "world"};
@@ -103,6 +102,9 @@ TEST(Split, MultiCharacterSeparatorRemaining) {
     EXPECT_EQ(iter.remaining(), "fox  jumps  over  the  lazy  dog"sv);
 }
 
+using waxwing::str_util::ltrim;
+using waxwing::str_util::rtrim;
+using waxwing::str_util::trim;
 TEST(Trim, LTrim) {
     const std::vector<std::pair<std::string_view, std::string_view>> tests{
         {ltrim(" \t\nhello "), "hello "},
@@ -133,6 +135,7 @@ TEST(Trim, Trim) {
     }
 }
 
+using waxwing::str_util::to_lower;
 TEST(ToLower, Basic) {
     const std::vector<std::pair<std::string, std::string_view>> tests{
         {to_lower("hElLo"), "hello"},
