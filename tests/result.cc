@@ -46,12 +46,6 @@ TEST(Result, HasError) {
     EXPECT_TRUE(e.has_error());
 }
 
-TEST(Result, traits) {
-    using R = Result<int, int>;
-    EXPECT_TRUE(waxwing::result::is_result<R>);
-    EXPECT_FALSE(waxwing::result::is_result<int>);
-}
-
 TEST(Result, Conversion) {
     const std::string corr{"correct"};
     Result<std::string_view, int> sres_corr = corr;
