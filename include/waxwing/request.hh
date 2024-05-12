@@ -5,24 +5,10 @@
 #include <string_view>
 #include <utility>
 
+#include "http.hh"
 #include "types.hh"
 
 namespace waxwing {
-enum class HttpMethod {
-    Get,
-    Head,
-    Post,
-    Put,
-    Delete,
-    Connect,
-    Options,
-    Trace,
-    Patch,
-};
-
-std::string_view format_method(HttpMethod method) noexcept;
-std::optional<HttpMethod> parse_method(std::string_view s) noexcept;
-
 class Request {
     friend class RequestBuilder;
 
@@ -66,22 +52,41 @@ public:
     template <typename S1, typename S2>
         requires(std::is_constructible_v<std::string, S1>) &&
                 (std::is_constructible_v<std::string, S2>)
-    void header(S1&& key, S2&& value) {
+    RequestBuilder& header(S1&& key, S2&& value) & {
         headers_.emplace(std::forward<S1>(key), std::forward<S2>(value));
+        return *this;
     }
 
-    void headers(const Headers& headers) {
+    template <typename S1, typename S2>
+        requires(std::is_constructible_v<std::string, S1>) &&
+                (std::is_constructible_v<std::string, S2>)
+    RequestBuilder&& header(S1&& key, S2&& value) && {
+        headers_.emplace(std::forward<S1>(key), std::forward<S2>(value));
+        return std::move(*this);
+    }
+
+    RequestBuilder& headers(const Headers& headers) & {
         headers_ = headers;
+        return *this;
     }
 
-    void headers(Headers&& headers) {
+    RequestBuilder&& headers(Headers&& headers) && {
         headers_ = std::move(headers);
+        return std::move(*this);
     }
 
     template <typename S>
         requires(std::is_constructible_v<std::string, S>)
-    void body(S&& value) {
+    RequestBuilder& body(S&& value) & {
         std::construct_at(&body_, std::forward<S>(value));
+        return *this;
+    }
+
+    template <typename S>
+        requires(std::is_constructible_v<std::string, S>)
+    RequestBuilder&& body(S&& value) && {
+        std::construct_at(&body_, std::forward<S>(value));
+        return std::move(*this);
     }
 
     std::unique_ptr<Request> build();

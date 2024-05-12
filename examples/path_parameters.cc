@@ -3,27 +3,26 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <iomanip>
-#include <sstream>
 #include <string_view>
 
 #include "waxwing/server.hh"
 
 auto name(const waxwing::PathParameters params) {
-    std::string body = fmt::format("Requested user \"{}\"", params[0]);
+    std::string body = fmt::format("Requested user `{}`", params[0]);
 
-    return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-        .body(waxwing::ContentType::Text, std::move(body))
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+        .body(std::move(body))
+        .content_type(waxwing::content_type::plaintext())
         .build();
 }
 
 auto name_action(const waxwing::PathParameters params) {
-    std::stringstream ss;
-    ss << "Requested " << std::quoted(params[1]) << " on "
-       << std::quoted(params[0]);
+    std::string body =
+        fmt::format("Requested `{}` on user `{}`", params[1], params[0]);
 
-    return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-        .body(waxwing::ContentType::Text, ss.str())
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+        .body(std::move(body))
+        .content_type(waxwing::content_type::plaintext())
         .build();
 }
 

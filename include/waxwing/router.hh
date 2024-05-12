@@ -91,7 +91,7 @@ public:
 class Router final {
     constexpr static auto default_not_found_handler =
         [](const Request&, const PathParameters&) {
-            return ResponseBuilder(StatusCode::NotFound).build();
+            return ResponseBuilder(HttpStatusCode::NotFound).build();
         };
 
     RouteTree tree_{};

@@ -9,15 +9,11 @@ using waxwing::internal::RouteTree;
 
 TEST(Router, Basic) {
     auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, "foo")
-            .build();
+        return ResponseBuilder{HttpStatusCode::Ok}.body("foo").build();
     };
 
     auto bar = [](const Request&, const PathParameters) {
-        return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, "bar")
-            .build();
+        return ResponseBuilder{HttpStatusCode::Ok}.body("bar").build();
     };
 
     RouteTree tree;
@@ -28,27 +24,27 @@ TEST(Router, Basic) {
 
     auto result = tree.get(HttpMethod::Get, "/foo");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body()->data, "foo");
+    EXPECT_EQ((result->handler())(*req, {})->body(), "foo");
 
     result = tree.get(HttpMethod::Get, "/bar");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body()->data, "bar");
+    EXPECT_EQ((result->handler())(*req, {})->body(), "bar");
 
     result = tree.get(HttpMethod::Get, "foo");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body()->data, "foo");
+    EXPECT_EQ((result->handler())(*req, {})->body(), "foo");
 
     result = tree.get(HttpMethod::Get, "bar");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body()->data, "bar");
+    EXPECT_EQ((result->handler())(*req, {})->body(), "bar");
 
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/unknown").has_value());
 }
 
 TEST(Router, PathParametersBasic) {
     auto foo_bar = [](const Request&, const PathParameters params) {
-        return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, fmt::format("{}{}", params[0], params[1]))
+        return ResponseBuilder{HttpStatusCode::Ok}
+            .body(fmt::format("{}{}", params[0], params[1]))
             .build();
     };
 
@@ -63,8 +59,7 @@ TEST(Router, PathParametersBasic) {
             auto opt = tree.get(method, path);
             ASSERT_TRUE(opt.has_value());
             EXPECT_EQ(opt->parameters().size(), params_count);
-            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
-                      result);
+            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body(), result);
         };
 
     expect_path_result(HttpMethod::Get, "/foo/", "foo", 2);
@@ -79,15 +74,11 @@ TEST(Router, PathParametersBasic) {
 
 TEST(Router, PathParametersRollback) {
     auto foo_bar = [](const Request&, const PathParameters) {
-        return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, fmt::format("foo_bar"))
-            .build();
+        return ResponseBuilder{HttpStatusCode::Ok}.body("foo_bar").build();
     };
 
     auto params = [](const Request&, const PathParameters) {
-        return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, fmt::format("params"))
-            .build();
+        return ResponseBuilder{HttpStatusCode::Ok}.body("params").build();
     };
 
     RouteTree tree;
@@ -102,8 +93,7 @@ TEST(Router, PathParametersRollback) {
             auto opt = tree.get(method, path);
             ASSERT_TRUE(opt.has_value());
             EXPECT_EQ(opt->parameters().size(), params_count);
-            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
-                      result);
+            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body(), result);
         };
 
     expect_path_result(HttpMethod::Get, "/foo/", "params", 1);
@@ -117,7 +107,7 @@ TEST(Router, PathParametersRollback) {
 
 TEST(Router, Exceptions) {
     auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{StatusCode::Ok}.build();
+        return ResponseBuilder{HttpStatusCode::Ok}.build();
     };
 
     Router r;

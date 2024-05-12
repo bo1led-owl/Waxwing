@@ -7,12 +7,14 @@
 #include "waxwing/server.hh"
 
 auto echo_get() {
-    return waxwing::ResponseBuilder{waxwing::StatusCode::Ok}.build();
+    return waxwing::ResponseBuilder{waxwing::HttpStatusCode::Ok}.build();
 }
 
 auto echo_post(const waxwing::Request& req) {
-    return waxwing::ResponseBuilder{waxwing::StatusCode::Ok}
-        .body(req.header("content-type").value_or("text/plain"), req.body())
+    return waxwing::ResponseBuilder{waxwing::HttpStatusCode::Ok}
+        .body(req.body())
+        .content_type(req.header("content-type")
+                          .value_or(waxwing::content_type::plaintext()))
         .build();
 }
 

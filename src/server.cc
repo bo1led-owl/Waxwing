@@ -170,18 +170,14 @@ void send_response(const Connection& conn, Response& resp) {
     std::string buf;
 
     buf += "HTTP/1.1 ";
-    buf += format_status(resp.status());
+    buf += format_status_code(resp.status());
     buf += "\r\n";
 
     Headers& headers = resp.headers();
-    headers["Connection"] = "Close";
 
-    const std::optional<Response::Body>& body_opt = resp.body();
+    const std::optional<std::string>& body_opt = resp.body();
     if (body_opt.has_value()) {
-        headers["Content-Type"] = body_opt->type;
-
-        const std::string content_length =
-            std::to_string(body_opt->data.size());
+        const std::string content_length = std::to_string(body_opt->size());
         headers["Content-Length"] = content_length;
     }
 
@@ -192,7 +188,7 @@ void send_response(const Connection& conn, Response& resp) {
     buf += "\r\n";
 
     if (body_opt.has_value()) {
-        buf += body_opt->data;
+        buf += *body_opt;
     }
 
     conn.send(buf);
@@ -211,7 +207,7 @@ void handle_connection(const Router& router, Connection connection) {
 
     std::unique_ptr<Response> resp = route.handler()(req, route.parameters());
     spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
-                 format_status(resp->status()));
+                 format_status_code(resp->status()));
     send_response(connection, *resp);
 }
 }  // namespace

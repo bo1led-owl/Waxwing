@@ -7,8 +7,9 @@
 #include "waxwing/server.hh"
 
 auto hello_world() {
-    return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-        .body(waxwing::ContentType::Text, "Hello world!")
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+        .body("Hello world!")
+        .content_type(waxwing::content_type::plaintext())
         .build();
 }
 

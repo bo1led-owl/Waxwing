@@ -11,19 +11,20 @@ auto read_header(const waxwing::Request& req) {
     std::optional<std::string_view> header = req.header("Key");
 
     if (header.has_value()) {
-        std::string body = fmt::format("OK key \"{}\"", *header);
-        return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
-            .body(waxwing::ContentType::Text, std::move(body))
+        std::string body = fmt::format("OK key `{}`", *header);
+        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+            .body(std::move(body))
+            .content_type(waxwing::content_type::plaintext())
             .build();
     } else {
-        return waxwing::ResponseBuilder(waxwing::StatusCode::BadRequest)
-            .body(waxwing::ContentType::Text, "No key provided")
+        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::BadRequest)
+            .body("No key provided")
             .build();
     }
 }
 
 auto write_header() {
-    return waxwing::ResponseBuilder(waxwing::StatusCode::Ok)
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
         .header("Key", "1234")
         .build();
 }

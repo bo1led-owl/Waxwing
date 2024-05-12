@@ -12,11 +12,13 @@ option(ENABLE_TESTING "Build testing target" ON)
 
 add_library(${PROJECT_NAME} STATIC)
 target_sources(${PROJECT_NAME} PRIVATE
+  src/http.cc
   src/io.cc
   src/request.cc
   src/response.cc
   src/router.cc
   src/server.cc
+  src/thread_pool.cc
 )
 
 target_include_directories(${PROJECT_NAME}

@@ -3,62 +3,6 @@
 #include "str_util.hh"
 
 namespace waxwing {
-std::string_view format_method(const HttpMethod method) noexcept {
-    switch (method) {
-        case HttpMethod::Get:
-            return "GET";
-        case HttpMethod::Post:
-            return "POST";
-        case HttpMethod::Head:
-            return "HEAD";
-        case HttpMethod::Put:
-            return "PUT";
-        case HttpMethod::Delete:
-            return "DELETE";
-        case HttpMethod::Connect:
-            return "CONNECT";
-        case HttpMethod::Options:
-            return "OPTIONS";
-        case HttpMethod::Trace:
-            return "TRACE";
-        case HttpMethod::Patch:
-            return "PATCH";
-        default:
-            __builtin_unreachable();
-    }
-}
-
-std::optional<HttpMethod> parse_method(const std::string_view s) noexcept {
-    if (s == "GET") {
-        return HttpMethod::Get;
-    }
-    if (s == "POST") {
-        return HttpMethod::Post;
-    }
-    if (s == "HEAD") {
-        return HttpMethod::Head;
-    }
-    if (s == "PUT") {
-        return HttpMethod::Put;
-    }
-    if (s == "DELETE") {
-        return HttpMethod::Delete;
-    }
-    if (s == "CONNECT") {
-        return HttpMethod::Connect;
-    }
-    if (s == "OPTIONS") {
-        return HttpMethod::Options;
-    }
-    if (s == "TRACE") {
-        return HttpMethod::Trace;
-    }
-    if (s == "PATCH") {
-        return HttpMethod::Patch;
-    }
-    return std::nullopt;
-}
-
 Request::Request(HttpMethod method, std::string&& target, Headers&& headers,
                  std::string&& body)
     : method_{method},
