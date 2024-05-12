@@ -29,8 +29,6 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/server.hh)
-
 find_package(fmt REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC fmt)
 

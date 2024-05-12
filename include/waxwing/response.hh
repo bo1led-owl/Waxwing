@@ -87,7 +87,7 @@ public:
         requires(std::is_constructible_v<std::string, S>)
     ResponseBuilder& content_type(S&& type) & noexcept {
         auto [iter, inserted] =
-            headers_.try_emplace("content-type", std::forward<S>(type));
+            headers_.try_emplace("Content-Type", std::forward<S>(type));
         if (!inserted) {
             iter->second = std::forward<S>(type);
         }
@@ -98,7 +98,7 @@ public:
         requires(std::is_constructible_v<std::string, S>)
     ResponseBuilder&& content_type(S&& type) && noexcept {
         auto [iter, inserted] =
-            headers_.try_emplace("content-type", std::forward<S>(type));
+            headers_.try_emplace("Content-Type", std::forward<S>(type));
         if (!inserted) {
             std::construct_at(std::addressof(iter->second),
                               std::forward<S>(type));

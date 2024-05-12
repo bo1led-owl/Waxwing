@@ -105,7 +105,30 @@ TEST(Router, PathParametersRollback) {
     EXPECT_FALSE(tree.get(HttpMethod::Get, "hello").has_value());
 }
 
-TEST(Router, Exceptions) {
+TEST(Router, RouteValidation) {
+    auto foo = [](const Request&, const PathParameters) {
+        return ResponseBuilder{HttpStatusCode::Ok}.build();
+    };
+
+    Router r;
+    auto expect_invalid = [&r, &foo](const std::string_view target) {
+        EXPECT_THROW(r.add_route(HttpMethod::Get, target, foo),
+                     std::invalid_argument);
+    };
+    auto expect_valid = [&r, &foo](const std::string_view target) {
+        EXPECT_NO_THROW(r.add_route(HttpMethod::Get, target, foo));
+    };
+
+    expect_valid("foo/bar/");
+    expect_valid("/foo/bar");
+    expect_valid("/:name/*action/");
+
+    expect_invalid("/b?/");
+    expect_invalid("/::foo/");
+    expect_invalid("/*action*");
+}
+
+TEST(Router, RepeatingTargets) {
     auto foo = [](const Request&, const PathParameters) {
         return ResponseBuilder{HttpStatusCode::Ok}.build();
     };

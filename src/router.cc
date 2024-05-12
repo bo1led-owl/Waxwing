@@ -5,9 +5,32 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <regex>
 #include <string_view>
 
 namespace waxwing::internal {
+namespace {
+void print_node_tree_segment(const uint8_t layer, const bool last) noexcept {
+    if (layer > 0 && !last) {
+        std::cout << "|";
+    }
+
+    if (layer >= 1) {
+        for (int i = 1; i < layer * 2 - 2; ++i) {
+            std::cout << "  ";
+        }
+        std::cout << "`- ";
+    }
+}
+
+bool validate_route(const std::string_view target) noexcept {
+    std::regex r{
+        R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
+        std::regex::ECMAScript | std::regex::nosubs | std::regex::optimize};
+    return std::regex_match(target.cbegin(), target.cend(), r);
+}
+}  // namespace
+
 // ===== RouteResult =====
 RequestHandler RouteResult::handler() const noexcept {
     return handler_;
@@ -24,6 +47,11 @@ void Router::set_not_found_handler(RequestHandler handler) noexcept {
 
 void Router::add_route(HttpMethod method, std::string_view target,
                        const RequestHandler& handler) {
+    bool success = validate_route(target);
+    if (!success) {
+        throw std::invalid_argument(fmt::format("Invalid route `{}`", target));
+    }
+
     tree_.insert(method, target, handler);
 }
 
@@ -56,21 +84,6 @@ std::pair<RouteTree::Node::Type, std::string_view> RouteTree::Node::parse_key(
             return {Type::Literal, key};
     }
 }
-
-namespace {
-void print_node_tree_segment(const uint8_t layer, const bool last) {
-    if (layer > 0 && !last) {
-        std::cout << "|";
-    }
-
-    if (layer >= 1) {
-        for (int i = 1; i < layer * 2 - 2; ++i) {
-            std::cout << "  ";
-        }
-        std::cout << "`- ";
-    }
-}
-}  // namespace
 
 void RouteTree::Node::print(const uint8_t layer,
                             const bool last) const noexcept {
