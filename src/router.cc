@@ -249,7 +249,9 @@ std::optional<RouteResult> RouteTree::get(
 
             std::optional<RequestHandler> result = child->find_handler(method);
             if (result.has_value()) {
-                params.push_back(cur_component);
+                if (child->is_parameter()) {
+                    params.push_back(cur_component);
+                }
                 return RouteResult{*result, std::move(params)};
             }
         }
@@ -276,7 +278,7 @@ std::optional<RouteResult> RouteTree::get(
         }
     }
 
-    if (cur_node->is_parameter()) {
+    if (pushed_parameter) {
         params.pop_back();
     }
     return std::nullopt;

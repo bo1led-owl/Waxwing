@@ -31,7 +31,7 @@ public:
     void set_not_found_handler(internal::RequestHandler handler);
 
     Result<void, std::string> bind(std::string_view address, uint16_t port,
-                                   int backlog = 512) noexcept;
+                                   int backlog = 100) noexcept;
 
     void serve() const noexcept;
     void print_route_tree() const noexcept;

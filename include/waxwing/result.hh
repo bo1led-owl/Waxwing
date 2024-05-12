@@ -111,27 +111,21 @@ public:
 
     template <typename U = T>
         requires(!std::is_same_v<std::remove_cvref_t<U>, Result>) &&
-                (!result::is_result<U>) && (!result::is_error<U>) &&
-                (std::is_constructible_v<T, U>)
+                    (!result::is_result<U>) && (!result::is_error<U>) &&
+                    (std::is_constructible_v<T, U>)
     constexpr explicit(!std::is_convertible_v<U, T>) Result(U&& value)
-        : has_value_{true} {
-        std::construct_at(std::addressof(value_), std::forward<U>(value));
-    }
+        : has_value_{true}, value_{std::forward<U>(value)} {}
 
     template <typename G = E>
         requires(std::is_constructible_v<E, G>) && (!result::is_error<G>)
     constexpr explicit(!std::is_convertible_v<G, E>)
         Result(const Error<G>& error)
-        : has_value_{false} {
-        std::construct_at(std::addressof(error_), error.error());
-    }
+        : has_value_{false}, error_{error.error()} {}
 
     template <typename G = E>
         requires(std::is_constructible_v<E, G>)
     constexpr explicit(!std::is_convertible_v<G, E>) Result(Error<G>&& error)
-        : has_value_{false} {
-        std::construct_at(std::addressof(error_), std::move(error).error());
-    }
+        : has_value_{false}, error_{std::move(error).error()} {}
 
     template <typename U = T, typename G = E>
         requires(std::is_constructible_v<T, const U&>) &&

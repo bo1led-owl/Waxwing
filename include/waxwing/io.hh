@@ -9,45 +9,33 @@
 #include "waxwing/result.hh"
 
 namespace waxwing::internal {
-class FileDescriptor {
-private:
+class Connection final {
     int fd_;
 
-    FileDescriptor() : fd_(-1) {}
-
 public:
-    FileDescriptor(const int fd) : fd_{fd} {}
-    virtual ~FileDescriptor();
-
-    FileDescriptor(const FileDescriptor&) = delete;
-    FileDescriptor& operator=(const FileDescriptor&) = delete;
-
-    FileDescriptor(FileDescriptor&&) = default;
-    FileDescriptor& operator=(FileDescriptor&&) = default;
-
-    bool is_valid() const;
-    int fd() const noexcept;
-};
-
-class Connection final : public FileDescriptor {
-public:
-    Connection(const int fd) : FileDescriptor{fd} {}
+    explicit Connection(const int fd) : fd_{fd} {}
+    ~Connection();
 
     Connection(const Connection&) = delete;
     Connection& operator=(const Connection&) = delete;
 
     Connection(Connection&&) noexcept;
-    Connection& operator=(Connection&&) noexcept = default;
+    Connection& operator=(Connection&&) noexcept;
 
     size_t recv(std::string& s, size_t n) const;
     size_t send(std::span<char> s) const;
+
+    bool is_valid() const noexcept;
 };
 
-class Socket final : public FileDescriptor {
-    Socket(int fd) : FileDescriptor{fd} {}
+class Socket final {
+    int fd_;
+
+    explicit Socket(const int fd) : fd_{fd} {}
 
 public:
-    Socket() : FileDescriptor{-1} {}
+    Socket() : fd_{-1} {}
+    ~Socket();
 
     static Result<Socket, std::string> create(std::string_view address,
                                               uint16_t port, int backlog);
@@ -56,7 +44,7 @@ public:
     Socket& operator=(const Socket&) = delete;
 
     Socket(Socket&&) noexcept;
-    Socket& operator=(Socket&&) noexcept = default;
+    Socket& operator=(Socket&&) noexcept;
 
     Connection accept() const;
 };

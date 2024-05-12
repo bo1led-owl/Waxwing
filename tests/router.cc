@@ -57,18 +57,19 @@ TEST(Router, PathParametersBasic) {
 
     auto req = RequestBuilder(HttpMethod::Get, "").build();
 
-    auto expect_path_result = [&tree, &req](std::string_view path,
-                                            HttpMethod method,
-                                            std::string_view result) {
-        auto opt = tree.get(method, path);
-        ASSERT_TRUE(opt.has_value());
-        EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
-                  result);
-    };
+    auto expect_path_result =
+        [&tree, &req](HttpMethod method, std::string_view path,
+                      std::string_view result, size_t params_count) {
+            auto opt = tree.get(method, path);
+            ASSERT_TRUE(opt.has_value());
+            EXPECT_EQ(opt->parameters().size(), params_count);
+            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
+                      result);
+        };
 
-    expect_path_result("/foo/", HttpMethod::Get, "foo");
-    expect_path_result("foo/bar", HttpMethod::Get, "foobar");
-    expect_path_result("1/2", HttpMethod::Get, "12");
+    expect_path_result(HttpMethod::Get, "/foo/", "foo", 2);
+    expect_path_result(HttpMethod::Get, "foo/bar", "foobar", 2);
+    expect_path_result(HttpMethod::Get, "1/2", "12", 2);
 
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
@@ -77,35 +78,36 @@ TEST(Router, PathParametersBasic) {
 }
 
 TEST(Router, PathParametersRollback) {
-    auto foo = [](const Request&, const PathParameters) {
+    auto foo_bar = [](const Request&, const PathParameters) {
         return ResponseBuilder{StatusCode::Ok}
-            .body(ContentType::Text, fmt::format("foo"))
+            .body(ContentType::Text, fmt::format("foo_bar"))
             .build();
     };
 
-    auto foo_bar = [](const Request&, const PathParameters) {
+    auto params = [](const Request&, const PathParameters) {
         return ResponseBuilder{StatusCode::Ok}
             .body(ContentType::Text, fmt::format("params"))
             .build();
     };
 
     RouteTree tree;
-    tree.insert(HttpMethod::Get, "/foo/bar", foo);
-    tree.insert(HttpMethod::Get, "/:foo/", foo_bar);
+    tree.insert(HttpMethod::Get, "/foo/bar", foo_bar);
+    tree.insert(HttpMethod::Get, "/:param/", params);
 
     auto req = RequestBuilder(HttpMethod::Get, "").build();
 
-    auto expect_path_result = [&tree, &req](std::string_view path,
-                                            HttpMethod method,
-                                            std::string_view result) {
-        auto opt = tree.get(method, path);
-        ASSERT_TRUE(opt.has_value());
-        EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
-                  result);
-    };
+    auto expect_path_result =
+        [&tree, &req](HttpMethod method, std::string_view path,
+                      std::string_view result, size_t params_count) {
+            auto opt = tree.get(method, path);
+            ASSERT_TRUE(opt.has_value());
+            EXPECT_EQ(opt->parameters().size(), params_count);
+            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body()->data,
+                      result);
+        };
 
-    expect_path_result("/foo/", HttpMethod::Get, "params");
-    expect_path_result("/foo/bar", HttpMethod::Get, "foo");
+    expect_path_result(HttpMethod::Get, "/foo/", "params", 1);
+    expect_path_result(HttpMethod::Get, "/foo/bar", "foo_bar", 0);
 
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
@@ -120,6 +122,7 @@ TEST(Router, Exceptions) {
 
     Router r;
     EXPECT_NO_THROW(r.add_route(HttpMethod::Get, "/foo", foo));
-    EXPECT_THROW(r.add_route(HttpMethod::Get, "/foo", foo), std::invalid_argument);
+    EXPECT_THROW(r.add_route(HttpMethod::Get, "/foo", foo),
+                 std::invalid_argument);
 }
 }  // namespace waxwing
