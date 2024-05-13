@@ -25,11 +25,13 @@ public:
     TaskQueue() = default;
 
     bool try_push(Task&& f);
-    void push(Task&& f);
+    void wait_and_push(Task&& f);
+
     bool try_pop(Task& result);
-    bool pop(Task& result);
+    bool wait_and_pop(Task& result);
+
     void done();
-    bool is_empty_and_done();
+    // bool is_empty_and_done();
 };
 
 class ThreadPool final {

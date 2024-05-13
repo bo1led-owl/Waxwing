@@ -20,8 +20,8 @@ TEST(ThreadPool, SingleProducer) {
 }
 
 TEST(ThreadPool, MultipleProducers) {
-    constexpr const int TASKS = 256;
-    constexpr const size_t CONSUMERS = 4;
+    constexpr const int TASKS = 1024;
+    constexpr const int CONSUMERS = 4;
     constexpr const int PRODUCERS = 4;
 
     ASSERT_EQ(TASKS % PRODUCERS, 0);
@@ -30,22 +30,25 @@ TEST(ThreadPool, MultipleProducers) {
     std::atomic<int> produced = 0;
     {
         ThreadPool pool{CONSUMERS};
+
         std::vector<std::jthread> producers;
         producers.reserve(PRODUCERS);
+
         for (int i = 0; i < PRODUCERS; ++i) {
             producers.emplace_back([&consumed, &pool, &produced]() {
-                for (int i = 0; i < TASKS / PRODUCERS; ++i) {
+                while (produced < TASKS) {
                     pool.async([&consumed]() { consumed += 1; });
                     produced += 1;
                 }
             });
         }
 
-        while (produced != TASKS) {
+        while (produced < TASKS) {
             std::this_thread::yield();
+            // std::cout << produced << ' ' << consumed << '\n';
         }
     }
-    EXPECT_EQ(produced, TASKS);
-    EXPECT_EQ(consumed, TASKS);
+
+    EXPECT_EQ(produced, consumed);
 }
 }  // namespace

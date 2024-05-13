@@ -35,6 +35,5 @@ public:
 
     void serve() const noexcept;
     void print_route_tree() const noexcept;
-    void disable_logging() noexcept;
 };
 };  // namespace waxwing

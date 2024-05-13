@@ -21,7 +21,7 @@ bool TaskQueue::try_push(Task&& f) {
     return true;
 }
 
-void TaskQueue::push(Task&& f) {
+void TaskQueue::wait_and_push(Task&& f) {
     {
         const std::lock_guard<std::mutex> lock{mut_};
         repr_.emplace(std::move(f));
@@ -41,7 +41,7 @@ bool TaskQueue::try_pop(Task& result) {
     return true;
 }
 
-bool TaskQueue::pop(Task& result) {
+bool TaskQueue::wait_and_pop(Task& result) {
     std::unique_lock<std::mutex> lock{mut_};
     cond_.wait(lock, [this]() { return !is_empty() || is_done(); });
     if (is_empty()) {
@@ -55,16 +55,16 @@ bool TaskQueue::pop(Task& result) {
 
 void TaskQueue::done() {
     {
-        const std::unique_lock<std::mutex> lock{mut_};
+        const std::lock_guard<std::mutex> lock{mut_};
         done_ = true;
     }
     cond_.notify_all();
 }
 
-bool TaskQueue::is_empty_and_done() {
-    const std::unique_lock<std::mutex> lock{mut_};
-    return is_done() && is_empty();
-}
+// bool TaskQueue::is_empty_and_done() {
+//     const std::lock_guard<std::mutex> lock{mut_};
+//     return is_done() && is_empty();
+// }
 
 void ThreadPool::thread_func(const unsigned int assigned_queue) {
     for (;;) {
@@ -77,7 +77,7 @@ void ThreadPool::thread_func(const unsigned int assigned_queue) {
             }
         }
 
-        if (!f && !queues_[assigned_queue].pop(f)) {
+        if ((!f && !queues_[assigned_queue].wait_and_pop(f))) {
             break;
         } else {
             f();
@@ -107,6 +107,6 @@ void ThreadPool::async(MovableFunction<void()>&& f) {
         }
     }
 
-    queues_[cur & num_threads_].push(std::move(f));
+    queues_[cur & num_threads_].wait_and_push(std::move(f));
 }
 }  // namespace waxwing::internal::concurrency

@@ -25,8 +25,8 @@ public:
     Request(const Request&) = delete;
     Request& operator=(const Request&) = delete;
 
-    Request(Request&& rhs) noexcept;
-    Request& operator=(Request&& rhs) noexcept;
+    Request(Request&& rhs) noexcept = default;
+    Request& operator=(Request&& rhs) noexcept = default;
 
     std::string_view target() const noexcept;
     HttpMethod method() const noexcept;
@@ -41,19 +41,20 @@ class RequestBuilder final {
     std::string body_{};
 
 public:
-    RequestBuilder(const RequestBuilder&) = delete;
-    RequestBuilder& operator=(const RequestBuilder&) = delete;
-
     template <typename S>
         requires(std::is_constructible_v<std::string, S>)
-    RequestBuilder(HttpMethod method, S&& target)
+    RequestBuilder(HttpMethod method, S&& target) 
         : method_{method}, target_{std::forward<S>(target)} {}
 
     template <typename S1, typename S2>
         requires(std::is_constructible_v<std::string, S1>) &&
                 (std::is_constructible_v<std::string, S2>)
     RequestBuilder& header(S1&& key, S2&& value) & {
-        headers_.emplace(std::forward<S1>(key), std::forward<S2>(value));
+        auto [iter, inserted] = headers_.try_emplace(std::forward<S1>(key),
+                                                     std::forward<S2>(value));
+        if (!inserted) {
+            std::construct_at(&iter->second, std::forward<S2>(value));
+        }
         return *this;
     }
 
@@ -61,7 +62,11 @@ public:
         requires(std::is_constructible_v<std::string, S1>) &&
                 (std::is_constructible_v<std::string, S2>)
     RequestBuilder&& header(S1&& key, S2&& value) && {
-        headers_.emplace(std::forward<S1>(key), std::forward<S2>(value));
+        auto [iter, inserted] = headers_.try_emplace(std::forward<S1>(key),
+                                                     std::forward<S2>(value));
+        if (!inserted) {
+            std::construct_at(&iter->second, std::forward<S2>(value));
+        }
         return std::move(*this);
     }
 
@@ -70,7 +75,7 @@ public:
         return *this;
     }
 
-    RequestBuilder&& headers(Headers&& headers) && {
+    RequestBuilder&& headers(Headers&& headers) && noexcept {
         headers_ = std::move(headers);
         return std::move(*this);
     }
@@ -89,6 +94,6 @@ public:
         return std::move(*this);
     }
 
-    std::unique_ptr<Request> build();
+    std::unique_ptr<Request> build() && ;
 };
 }  // namespace waxwing
