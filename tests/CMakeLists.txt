@@ -16,8 +16,10 @@ macro(add_test_target NAME)
       GTest::gtest_main
       ${PROJECT_NAME}
   )
+    
   target_compile_options(${NAME} PRIVATE -fsanitize=address,undefined)
   target_link_options(${NAME} PRIVATE -fsanitize=address,undefined)
+
   gtest_discover_tests(${NAME})
 endmacro()
 

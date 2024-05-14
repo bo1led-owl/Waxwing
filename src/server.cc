@@ -163,7 +163,7 @@ Result<std::unique_ptr<Request>, std::string> read_request(
     }
 
     builder.headers(std::move(headers));
-    return builder.build();
+    return std::move(builder).build();
 }
 
 void send_response(const Connection& conn, Response& resp) {
@@ -203,7 +203,8 @@ void handle_connection(const Router& router, Connection connection) {
 
     const Request& req = *req_res.value();
 
-    internal::RouteResult route = router.route(req.method(), req.target());
+    const internal::RoutingResult route =
+        router.route(req.method(), req.target());
 
     std::unique_ptr<Response> resp = route.handler()(req, route.parameters());
     spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
@@ -246,9 +247,7 @@ void Server::route(
     router_.add_route(method, target, handler);
 }
 
-void Server::print_route_tree() const noexcept {
-    router_.print_tree();
-}
+void Server::print_route_tree() const noexcept { router_.print_tree(); }
 
 void Server::set_not_found_handler(internal::RequestHandler handler) {
     router_.set_not_found_handler(handler);

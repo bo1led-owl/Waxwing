@@ -58,9 +58,7 @@ public:
         return std::invoke(*f_, std::forward<Args>(args)...);
     }
 
-    operator bool() const {
-        return f_ != nullptr;
-    }
+    operator bool() const { return f_ != nullptr; }
 };
 
 }  // namespace waxwing::internal

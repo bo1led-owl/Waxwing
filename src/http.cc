@@ -24,9 +24,8 @@ std::string_view format_method(const HttpMethod method) noexcept {
             return "TRACE";
         case HttpMethod::Patch:
             return "PATCH";
-        default:
-            __builtin_unreachable();
     }
+    __builtin_unreachable();
 }
 
 std::optional<HttpMethod> parse_method(const std::string_view s) noexcept {
@@ -184,22 +183,22 @@ std::string_view format_status_code(const HttpStatusCode code) noexcept {
             return "510 Not Extended";
         case HttpStatusCode::NetworkAuthenticationRequired:
             return "511 Network Authentication Required";
-        default:
-            __builtin_unreachable();
     }
+    __builtin_unreachable();
 }
 
 namespace content_type {
-std::string_view plaintext() noexcept {
-    return "text/plain";
-}
-
-std::string_view html() noexcept {
-    return "text/html";
-}
-
-std::string_view javascript() noexcept {
-    return "text/javascript";
-}
+std::string_view plaintext() noexcept { return "text/plain"; }
+std::string_view html() noexcept { return "text/html"; }
+std::string_view javascript() noexcept { return "text/javascript"; }
+std::string_view css() noexcept { return "text/css"; }
+std::string_view json() noexcept { return "application/json"; }
+std::string_view csv() noexcept { return "text/csv"; }
+std::string_view mp3() noexcept { return "audio/mpeg"; }
+std::string_view mp4() noexcept { return "video/mp4"; }
+std::string_view ico() noexcept { return "image/vnd.microsoft.icon"; }
+std::string_view jpeg() noexcept { return "image/jpeg"; }
+std::string_view png() noexcept { return "image/png"; }
+std::string_view gif() noexcept { return "image/gif"; }
 }  // namespace content_type
 }  // namespace waxwing

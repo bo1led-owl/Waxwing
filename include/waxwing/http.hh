@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string_view>
+
 namespace waxwing {
 enum class HttpMethod {
     Get,
@@ -87,5 +88,14 @@ namespace content_type {
 std::string_view plaintext() noexcept;
 std::string_view html() noexcept;
 std::string_view javascript() noexcept;
+std::string_view css() noexcept;
+std::string_view json() noexcept;
+std::string_view csv() noexcept;
+std::string_view mp3() noexcept;
+std::string_view mp4() noexcept;
+std::string_view ico() noexcept;
+std::string_view jpeg() noexcept;
+std::string_view png() noexcept;
+std::string_view gif() noexcept;
 }  // namespace content_type
 }  // namespace waxwing

@@ -3,7 +3,6 @@
 #include <fmt/core.h>
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <regex>
 #include <string_view>
@@ -24,30 +23,27 @@ void print_node_tree_segment(const uint8_t layer, const bool last) noexcept {
 }
 
 bool validate_route(const std::string_view target) noexcept {
-    std::regex r{
-        R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
-        std::regex::ECMAScript | std::regex::nosubs | std::regex::optimize};
+    const std::regex r{R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
+                       std::regex::ECMAScript | std::regex::nosubs};
     return std::regex_match(target.cbegin(), target.cend(), r);
 }
 }  // namespace
 
 // ===== RouteResult =====
-RequestHandler RouteResult::handler() const noexcept {
-    return handler_;
-}
+RequestHandler RoutingResult::handler() const noexcept { return handler_; }
 
-PathParameters RouteResult::parameters() const noexcept {
+PathParameters RoutingResult::parameters() const noexcept {
     return parameters_;
 }
 
 // ===== Router =====
-void Router::set_not_found_handler(RequestHandler handler) noexcept {
+void Router::set_not_found_handler(const RequestHandler handler) noexcept {
     not_found_handler_ = handler;
 }
 
-void Router::add_route(HttpMethod method, std::string_view target,
+void Router::add_route(const HttpMethod method, const std::string_view target,
                        const RequestHandler& handler) {
-    bool success = validate_route(target);
+    const bool success = validate_route(target);
     if (!success) {
         throw std::invalid_argument(fmt::format("Invalid route `{}`", target));
     }
@@ -55,33 +51,40 @@ void Router::add_route(HttpMethod method, std::string_view target,
     tree_.insert(method, target, handler);
 }
 
-void Router::print_tree() const noexcept {
-    tree_.print();
-}
+void Router::print_tree() const noexcept { tree_.print(); }
 
-RouteResult Router::route(HttpMethod method,
-                          std::string_view target) const noexcept {
+RoutingResult Router::route(const HttpMethod method,
+                            const std::string_view target) const noexcept {
     return tree_.get(method, target)
-        .value_or(RouteResult{not_found_handler_, {}});
+        .value_or(RoutingResult{not_found_handler_, {}});
 }
 
 // ===== RouteTree::Node =====
-RouteTree::Node::Node(std::string_view key)
-    : type_{parse_key(key).first}, key_{parse_key(key).second} {}
+RouteTree::Node::Node(const std::string_view key)
+    : type_{parse_type(key)}, key_{parse_key(key)} {}
 
-std::pair<RouteTree::Node::Type, std::string_view> RouteTree::Node::parse_key(
+RouteTree::Node::Type RouteTree::Node::parse_type(
     const std::string_view key) noexcept {
     if (key.empty()) {
-        return {Type::Literal, key};
+        return Type::Literal;
     }
 
     switch (key[0]) {
         case '*':
-            return {Type::ParamAny, key.substr(1)};
+            return Type::ParamAny;
         case ':':
-            return {Type::ParamNonEmpty, key.substr(1)};
+            return Type::ParamNonEmpty;
         default:
-            return {Type::Literal, key};
+            return Type::Literal;
+    }
+}
+
+std::string_view RouteTree::Node::parse_key(
+    const std::string_view key) noexcept {
+    if (key.starts_with(':') || key.starts_with('*')) {
+        return key.substr(1);
+    } else {
+        return key;
     }
 }
 
@@ -116,13 +119,8 @@ void RouteTree::Node::print(const uint8_t layer,
     }
 }
 
-RouteTree::Node::Type RouteTree::Node::type() const noexcept {
-    return type_;
-}
-
-std::string_view RouteTree::Node::key() const noexcept {
-    return key_;
-}
+RouteTree::Node::Type RouteTree::Node::type() const noexcept { return type_; }
+std::string_view RouteTree::Node::key() const noexcept { return key_; }
 
 std::strong_ordering RouteTree::Node::operator<=>(
     const Node& rhs) const noexcept {
@@ -137,10 +135,17 @@ std::strong_ordering RouteTree::Node::operator<=>(
 }
 
 bool RouteTree::Node::is_parameter() const noexcept {
-    return type_ == Type::ParamNonEmpty || type_ == Type::ParamAny;
+    switch (type_) {
+        case Type::Literal:
+            return false;
+        case Type::ParamNonEmpty:
+        case Type::ParamAny:
+            return true;
+    }
+    __builtin_unreachable();
 }
 
-bool RouteTree::Node::matches(std::string_view key) const noexcept {
+bool RouteTree::Node::matches(const std::string_view key) const noexcept {
     switch (type_) {
         case Type::Literal:
             return key == key_;
@@ -148,23 +153,8 @@ bool RouteTree::Node::matches(std::string_view key) const noexcept {
             return !key.empty();
         case Type::ParamAny:
             return true;
-        default:
-            __builtin_unreachable();
     }
-}
-
-bool RouteTree::Node::insert_handler(HttpMethod method,
-                                     RequestHandler handler) {
-    if (std::find_if(
-            handlers_.cbegin(), handlers_.cend(),
-            [method](const std::pair<HttpMethod, RequestHandler>& hanlder) {
-                return hanlder.first == method;
-            }) != handlers_.end()) {
-        return false;
-    }
-
-    handlers_.emplace_back(method, handler);
-    return true;
+    __builtin_unreachable();
 }
 
 RouteTree::Node& RouteTree::Node::insert_or_get_child(Node&& child) {
@@ -177,12 +167,32 @@ RouteTree::Node& RouteTree::Node::insert_or_get_child(Node&& child) {
         return *iter;
     }
 
-    Node& result = children_.emplace_back(std::move(child));
+    // if the child is not present, find its position to keep the children
+    // sorted by type to avoid sorting when routing
+    auto emplace_position =
+        std::lower_bound(children_.begin(), children_.end(), child);
+    Node& result = *children_.emplace(emplace_position, std::move(child));
     return result;
 }
 
+bool RouteTree::Node::insert_handler(const HttpMethod method,
+                                     const RequestHandler handler) {
+    auto iter = std::find_if(
+        handlers_.cbegin(), handlers_.cend(),
+        [method](const std::pair<HttpMethod, RequestHandler>& hanlder) {
+            return hanlder.first == method;
+        });
+
+    if (iter != handlers_.end()) {
+        return false;
+    }
+
+    handlers_.emplace_back(method, handler);
+    return true;
+}
+
 std::optional<RequestHandler> RouteTree::Node::find_handler(
-    HttpMethod method) const noexcept {
+    const HttpMethod method) const noexcept {
     auto iter = std::find_if(
         handlers_.cbegin(), handlers_.cend(),
         [method](const std::pair<HttpMethod, RequestHandler>& hanlder) {
@@ -196,29 +206,25 @@ std::optional<RequestHandler> RouteTree::Node::find_handler(
     return iter->second;
 }
 
-std::vector<RouteTree::Node const*> RouteTree::Node::find_matching_children(
-    std::string_view component) const noexcept {
-    std::vector<Node const*> result;
+std::vector<std::reference_wrapper<const RouteTree::Node>>
+RouteTree::Node::find_matching_children(
+    const std::string_view component) const noexcept {
+    std::vector<std::reference_wrapper<const RouteTree::Node>> result;
 
     for (const auto& child : children_) {
         if (child.matches(component)) {
-            result.push_back(&child);
+            result.push_back(std::ref(child));
         }
     }
-
-    std::sort(result.begin(), result.end(),
-              [](Node const* lhs, Node const* rhs) { return *lhs < *rhs; });
 
     return result;
 }
 
 // ===== RouteTree =====
-void RouteTree::print() const noexcept {
-    root_.print();
-}
+void RouteTree::print() const noexcept { root_.print(); }
 
-bool RouteTree::insert(Node& cur_node, HttpMethod method,
-                       std::string_view target, RequestHandler handler) {
+bool RouteTree::insert(Node& cur_node, const HttpMethod method,
+                       std::string_view target, const RequestHandler handler) {
     const size_t slash_pos = target.find('/');
     const std::string_view component = target.substr(0, slash_pos);
 
@@ -232,8 +238,8 @@ bool RouteTree::insert(Node& cur_node, HttpMethod method,
                   handler);
 }
 
-void RouteTree::insert(HttpMethod method, std::string_view target,
-                       RequestHandler handler) {
+void RouteTree::insert(const HttpMethod method, std::string_view target,
+                       const RequestHandler handler) {
     // leading slash is insignificant
     if (target.starts_with('/')) {
         target = target.substr(1);
@@ -246,46 +252,41 @@ void RouteTree::insert(HttpMethod method, std::string_view target,
     }
 }
 
-std::optional<RouteResult> RouteTree::get(
-    Node const* cur_node, std::vector<std::string_view>& params,
-    HttpMethod method, std::string_view target) const noexcept {
-    assert(cur_node);
-
+std::optional<RoutingResult> RouteTree::get(
+    Node const& cur_node, std::vector<std::string_view>& params,
+    const HttpMethod method, std::string_view target) noexcept {
     const size_t slash_pos = target.find('/');
-    std::string_view cur_component = target.substr(0, slash_pos);
     const bool found_slash = slash_pos != std::string_view::npos;
+    const std::string_view cur_component = target.substr(0, slash_pos);
 
     if (!found_slash) {
-        for (const Node* child :
-             cur_node->find_matching_children(cur_component)) {
-            assert(child);
-
-            std::optional<RequestHandler> result = child->find_handler(method);
+        for (const Node& child :
+             cur_node.find_matching_children(cur_component)) {
+            std::optional<RequestHandler> result = child.find_handler(method);
             if (result.has_value()) {
-                if (child->is_parameter()) {
+                if (child.is_parameter()) {
                     params.push_back(cur_component);
                 }
-                return RouteResult{*result, std::move(params)};
+                return RoutingResult{*result, std::move(params)};
             }
         }
 
         return std::nullopt;
     }
 
-    auto matching_children = cur_node->find_matching_children(cur_component);
+    auto matching_children = cur_node.find_matching_children(cur_component);
 
     bool pushed_parameter = false;
-    target = target.substr(slash_pos + 1);  // prepare target for next iteration
-    for (const Node* child : matching_children) {
-        assert(cur_node);
-
+    target = target.substr(slash_pos + 1);  // remove current path component
+    for (const Node& child : matching_children) {
         // sorting guarantees that literals come first
-        if (child->is_parameter() && !pushed_parameter) {
+        if (child.is_parameter() && !pushed_parameter) {
             params.push_back(cur_component);
             pushed_parameter = true;
         }
 
-        std::optional<RouteResult> result = get(child, params, method, target);
+        std::optional<RoutingResult> result =
+            get(child, params, method, target);
         if (result.has_value()) {
             return result;
         }
@@ -297,7 +298,7 @@ std::optional<RouteResult> RouteTree::get(
     return std::nullopt;
 }
 
-std::optional<RouteResult> RouteTree::get(
+std::optional<RoutingResult> RouteTree::get(
     HttpMethod method, std::string_view target) const noexcept {
     // leading slash is insignificant
     if (target.starts_with('/')) {
@@ -305,6 +306,6 @@ std::optional<RouteResult> RouteTree::get(
     }
 
     std::vector<std::string_view> params;
-    return get(&root_, params, method, target);
+    return get(root_, params, method, target);
 }
 }  // namespace waxwing::internal

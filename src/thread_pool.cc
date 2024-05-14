@@ -1,13 +1,9 @@
 #include "thread_pool.hh"
 
 namespace waxwing::internal::concurrency {
-bool TaskQueue::is_empty() const {
-    return repr_.empty();
-}
+bool TaskQueue::is_empty() const { return repr_.empty(); }
 
-bool TaskQueue::is_done() const {
-    return done_;
-}
+bool TaskQueue::is_done() const { return done_; }
 
 bool TaskQueue::try_push(Task&& f) {
     {

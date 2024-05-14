@@ -51,12 +51,8 @@ public:
         requires(!result::is_error<Err>) && (std::is_constructible_v<E, Err>)
     explicit constexpr Error(Err&& err) : value_{std::forward<Err>(err)} {}
 
-    [[nodiscard]] constexpr E& error() & noexcept {
-        return value_;
-    }
-    [[nodiscard]] constexpr E const& error() const& noexcept {
-        return value_;
-    }
+    [[nodiscard]] constexpr E& error() & noexcept { return value_; }
+    [[nodiscard]] constexpr E const& error() const& noexcept { return value_; }
     [[nodiscard]] constexpr E&& error() && noexcept {
         return std::move(value_);
     }
@@ -154,17 +150,11 @@ public:
         }
     }
 
-    constexpr bool has_value() const {
-        return has_value_;
-    }
+    constexpr bool has_value() const { return has_value_; }
 
-    constexpr bool has_error() const {
-        return !has_value_;
-    }
+    constexpr bool has_error() const { return !has_value_; }
 
-    constexpr operator bool() const {
-        return has_value();
-    }
+    constexpr operator bool() const { return has_value(); }
 
     constexpr operator value_type() const = delete;
     constexpr operator error_type() const

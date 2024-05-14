@@ -10,13 +10,9 @@ template <typename Sep>
     requires(std::convertible_to<Sep, std::string_view> ||
              std::convertible_to<Sep, char>)
 class Split final {
-    static constexpr size_t length(char) {
-        return 1;
-    }
+    static constexpr size_t length(char) { return 1; }
 
-    static constexpr size_t length(std::string_view s) {
-        return s.size();
-    }
+    static constexpr size_t length(std::string_view s) { return s.size(); }
 
     std::string_view source_;
     Sep sep_;
@@ -79,13 +75,9 @@ public:
             return prev;
         }
 
-        constexpr value_type operator*() const {
-            return *cur_;
-        }
+        constexpr value_type operator*() const { return *cur_; }
 
-        constexpr pointer operator->() const {
-            return &*cur_;
-        }
+        constexpr pointer operator->() const { return &*cur_; }
 
         constexpr bool operator==(const Iterator& other) const noexcept {
             return src_ == src_ && cur_ == other.cur_ &&
@@ -104,13 +96,9 @@ public:
     constexpr Split(const std::string_view source, const Sep sep)
         : source_(source), sep_(sep) {}
 
-    constexpr Iterator begin() const {
-        return Iterator{source_, sep_};
-    }
+    constexpr Iterator begin() const { return Iterator{source_, sep_}; }
 
-    constexpr IteratorSentinel end() const {
-        return IteratorSentinel{};
-    }
+    constexpr IteratorSentinel end() const { return IteratorSentinel{}; }
 };
 
 constexpr Split<std::string_view> split(std::string_view str,

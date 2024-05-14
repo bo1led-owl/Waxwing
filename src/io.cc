@@ -15,9 +15,7 @@
 #include "waxwing/result.hh"
 
 namespace waxwing::internal {
-Connection::~Connection() {
-    close(fd_);
-}
+Connection::~Connection() { close(fd_); }
 
 Connection::Connection(Connection&& other) noexcept
     : fd_{std::exchange(other.fd_, -1)} {}
@@ -41,13 +39,9 @@ size_t Connection::send(const std::span<char> s) const {
     return ::send(fd_, s.data(), s.size(), 0);
 }
 
-bool Connection::is_valid() const noexcept {
-    return fd_ >= 0;
-}
+bool Connection::is_valid() const noexcept { return fd_ >= 0; }
 
-Socket::~Socket() {
-    close(fd_);
-}
+Socket::~Socket() { close(fd_); }
 
 Result<Socket, std::string> Socket::create(const std::string_view address,
                                            const uint16_t port,
@@ -91,8 +85,9 @@ Socket& Socket::operator=(Socket&& rhs) noexcept {
 Connection Socket::accept() const {
     sockaddr_in clientaddr{};
     socklen_t clientaddr_len = sizeof(clientaddr);
-    int result = ::accept(fd_, reinterpret_cast<sockaddr*>(&clientaddr),
-                          &clientaddr_len);
+
+    const int result = ::accept(fd_, reinterpret_cast<sockaddr*>(&clientaddr),
+                                &clientaddr_len);
 
     return Connection{result};
 }

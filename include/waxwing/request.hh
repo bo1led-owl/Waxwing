@@ -15,7 +15,6 @@ class Request {
     HttpMethod method_;
     std::string target_;
     Headers headers_;
-    PathParameters params_;
     std::string body_;
 
     Request(HttpMethod method, std::string&& target, Headers&& headers,
@@ -28,8 +27,8 @@ public:
     Request(Request&& rhs) noexcept = default;
     Request& operator=(Request&& rhs) noexcept = default;
 
-    std::string_view target() const noexcept;
     HttpMethod method() const noexcept;
+    std::string_view target() const noexcept;
     std::string_view body() const noexcept;
     std::optional<std::string_view> header(std::string_view key) const noexcept;
 };
@@ -43,7 +42,7 @@ class RequestBuilder final {
 public:
     template <typename S>
         requires(std::is_constructible_v<std::string, S>)
-    RequestBuilder(HttpMethod method, S&& target) 
+    RequestBuilder(HttpMethod method, S&& target)
         : method_{method}, target_{std::forward<S>(target)} {}
 
     template <typename S1, typename S2>
@@ -94,6 +93,6 @@ public:
         return std::move(*this);
     }
 
-    std::unique_ptr<Request> build() && ;
+    std::unique_ptr<Request> build() &&;
 };
 }  // namespace waxwing

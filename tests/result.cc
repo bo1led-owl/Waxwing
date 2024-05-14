@@ -6,21 +6,13 @@ namespace {
 using waxwing::Error;
 using waxwing::Result;
 
-Result<int, int> correct() {
-    return 1;
-}
+Result<int, int> correct() { return 1; }
 
-Result<int, int> error() {
-    return Error{0};
-}
+Result<int, int> error() { return Error{0}; }
 
-int throw_on_error() {
-    return correct().error();
-}
+int throw_on_error() { return correct().error(); }
 
-int throw_on_value() {
-    return error().value();
-}
+int throw_on_value() { return error().value(); }
 
 TEST(Result, Basic) {
     auto res = correct();
