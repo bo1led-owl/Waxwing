@@ -64,26 +64,14 @@ std::string read_body(const Connection& conn, std::string_view initial,
 
 std::optional<std::pair<HttpMethod, std::string>> parse_request_line(
     std::string_view line) {
-    const auto token_split = str_util::split(line, ' ');
-    auto token_iter = token_split.begin();
+    auto token_split = str_util::split(line, ' ');
 
-    auto get_tok = [&token_iter,
-                    &token_split]() -> std::optional<std::string_view> {
-        std::optional<std::string_view> result = std::nullopt;
-
-        if (token_iter != token_split.end()) {
-            result = *token_iter;
-        }
-
-        ++token_iter;
-        return result;
-    };
-
-    std::optional<HttpMethod> method = and_then(
-        get_tok(), [](const std::string_view s) { return parse_method(s); });
-    std::optional<std::string> target =
-        map(get_tok(), [](std::string_view s) { return std::string{s}; });
-    const std::optional<std::string_view> http_version = get_tok();
+    std::optional<HttpMethod> method =
+        and_then(token_split.next(),
+                 [](const std::string_view s) { return parse_method(s); });
+    std::optional<std::string> target = map(
+        token_split.next(), [](std::string_view s) { return std::string{s}; });
+    const std::optional<std::string_view> http_version = token_split.next();
 
     if (!method || !target || !http_version) {
         return std::nullopt;
@@ -115,17 +103,17 @@ Result<std::unique_ptr<Request>, std::string> read_request(
     std::string buf;
     conn.recv(buf, HEADERS_BUFFER_SIZE);
 
-    const str_util::Split line_split = str_util::split(buf, "\r\n");
-    auto line_iter = line_split.begin();
+    str_util::Split line_split = str_util::split(buf, "\r\n");
 
     std::optional<std::pair<HttpMethod, std::string>> request_line_opt =
-        parse_request_line(*line_iter);
+        and_then(line_split.next(), [](const std::string_view line) {
+            return parse_request_line(line);
+        });
     if (!request_line_opt) {
         return Error{"Error parsing request line"};
     }
 
     auto [method, target] = std::move(*request_line_opt);
-    ++line_iter;
 
     if (!target.starts_with('/')) {
         target = std::move(std::string("/").append(target));
@@ -134,13 +122,13 @@ Result<std::unique_ptr<Request>, std::string> read_request(
     RequestBuilder builder{method, std::move(target)};
     Headers headers;
 
-    for (; line_iter != line_split.end(); ++line_iter) {
-        const std::string_view line = *line_iter;
-        if (line.empty()) {
+    for (std::optional<std::string_view> line = line_split.next();
+         line.has_value(); line = line_split.next()) {
+        if (line->empty()) {
             break;
         }
 
-        auto [key, value] = parse_header(line);
+        auto [key, value] = parse_header(*line);
         headers.emplace(std::move(key), std::move(value));
     };
 
@@ -156,9 +144,9 @@ Result<std::unique_ptr<Request>, std::string> read_request(
             }
 
             builder.body(
-                read_body(conn, line_iter.remaining(), *content_length));
+                read_body(conn, line_split.remaining(), *content_length));
         } else {
-            builder.body(line_iter.remaining());
+            builder.body(line_split.remaining());
         }
     }
 

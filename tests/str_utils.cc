@@ -12,9 +12,10 @@ TEST(Split, CharacterSeparatorBasic) {
     const std::vector<std::string_view> words{"hello", "world"};
 
     size_t i = 0;
-    for (auto word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
@@ -25,9 +26,10 @@ TEST(Split, CharacterSeparatorEmptyWords) {
     const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
     size_t i = 0;
-    for (auto word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
@@ -38,9 +40,10 @@ TEST(Split, CharacterSeparatorSingleItem) {
     const std::vector<std::string_view> words{"hello"};
 
     size_t i = 0;
-    for (std::string_view word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
@@ -51,9 +54,10 @@ TEST(Split, MultiCharacterSeparatorBasic) {
     const std::vector<std::string_view> words{"hello", "world"};
 
     size_t i = 0;
-    for (auto word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
@@ -64,9 +68,10 @@ TEST(Split, MultiCharacterSeparatorEmptyWords) {
     const std::vector<std::string_view> words{"", "hello", "", "world", ""};
 
     size_t i = 0;
-    for (auto word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
@@ -77,29 +82,28 @@ TEST(Split, MultiCharacterSeparatorSingleItem) {
     const std::vector<std::string_view> words{"hello"};
 
     size_t i = 0;
-    for (auto word : iter) {
+    for (std::optional<std::string_view> word = iter.next(); word.has_value();
+         word = iter.next()) {
         ASSERT_LT(i, words.size());
-        EXPECT_EQ(word, words[i]);
+        EXPECT_EQ(*word, words[i]);
         i++;
     }
     EXPECT_EQ(i, words.size());
 }
 
 TEST(Split, CharacterSeparatorRemaining) {
-    auto iter =
-        split("The quick brown fox jumps over the lazy dog", ' ').begin();
-    ++iter;
-    ++iter;
-    EXPECT_EQ(iter.remaining(), "fox jumps over the lazy dog"sv);
+    auto iter = split("The quick brown fox jumps over the lazy dog", ' ');
+    iter.next();
+    iter.next();
+    EXPECT_EQ(iter.remaining(), "brown fox jumps over the lazy dog"sv);
 }
 
 TEST(Split, MultiCharacterSeparatorRemaining) {
     auto iter =
-        split("The  quick  brown  fox  jumps  over  the  lazy  dog", "  ")
-            .begin();
-    ++iter;
-    ++iter;
-    EXPECT_EQ(iter.remaining(), "fox  jumps  over  the  lazy  dog"sv);
+        split("The  quick  brown  fox  jumps  over  the  lazy  dog", "  ");
+    iter.next();
+    iter.next();
+    EXPECT_EQ(iter.remaining(), "brown  fox  jumps  over  the  lazy  dog"sv);
 }
 
 using waxwing::str_util::ltrim;

@@ -48,7 +48,7 @@ class Error final {
 
 public:
     template <typename Err>
-        requires(!result::is_error<Err>) && (std::is_constructible_v<E, Err>)
+        requires(!result::is_error<Err>) && (std::constructible_from<E, Err>)
     explicit constexpr Error(Err&& err) : value_{std::forward<Err>(err)} {}
 
     [[nodiscard]] constexpr E& error() & noexcept { return value_; }
@@ -69,9 +69,9 @@ class Result final {
     template <typename, typename>
     friend class Result;
 
-    static_assert(!result::is_result<T> && !result::is_error<T> &&
-                  result::can_be_value<T> && !result::is_result<E> &&
-                  !result::is_error<E> && result::can_be_error<E>);
+    static_assert(!result::is_result<T> && !result::is_result<E> &&
+                  !result::is_error<T> && !result::is_error<E> &&
+                  result::can_be_value<T> && result::can_be_error<E>);
 
     bool has_value_;
 
@@ -85,18 +85,18 @@ class Result final {
 public:
     ~Result() {
         if (has_value_) {
-            if constexpr (std::is_destructible_v<value_type>) {
+            if constexpr (std::destructible<value_type>) {
                 value_.~value_type();
             }
         } else {
-            if constexpr (std::is_destructible_v<error_type>) {
+            if constexpr (std::destructible<error_type>) {
                 error_.~error_type();
             }
         }
     }
 
     constexpr Result()
-        requires(std::is_void_v<T> || std::is_default_constructible_v<T>)
+        requires(std::is_void_v<T> || std::default_initializable<T>)
         : has_value_{true}, value_{} {}
 
     constexpr Result(const Result&) = default;
@@ -106,28 +106,26 @@ public:
     constexpr Result& operator=(Result&&) = default;
 
     template <typename U = T>
-        requires(!std::is_same_v<std::remove_cvref_t<U>, Result>) &&
+        requires(!std::same_as<std::remove_cvref_t<U>, Result>) &&
                     (!result::is_result<U>) && (!result::is_error<U>) &&
-                    (std::is_constructible_v<T, U>)
-    constexpr explicit(!std::is_convertible_v<U, T>) Result(U&& value)
+                    (std::constructible_from<T, U>)
+    constexpr explicit(!std::convertible_to<U, T>) Result(U&& value)
         : has_value_{true}, value_{std::forward<U>(value)} {}
 
     template <typename G = E>
-        requires(std::is_constructible_v<E, G>) && (!result::is_error<G>)
-    constexpr explicit(!std::is_convertible_v<G, E>)
-        Result(const Error<G>& error)
+        requires(std::constructible_from<E, G>) && (!result::is_error<G>)
+    constexpr explicit(!std::convertible_to<G, E>) Result(const Error<G>& error)
         : has_value_{false}, error_{error.error()} {}
 
     template <typename G = E>
-        requires(std::is_constructible_v<E, G>)
-    constexpr explicit(!std::is_convertible_v<G, E>) Result(Error<G>&& error)
+        requires(std::constructible_from<E, G>)
+    constexpr explicit(!std::convertible_to<G, E>) Result(Error<G>&& error)
         : has_value_{false}, error_{std::move(error).error()} {}
 
     template <typename U = T, typename G = E>
-        requires(std::is_constructible_v<T, const U&>) &&
-                (std::is_constructible_v<E, const G&>)
-    constexpr explicit(!std::is_convertible_v<U, T> ||
-                       !std::is_convertible_v<G, E>)
+        requires(std::constructible_from<T, const U&>) &&
+                (std::constructible_from<E, const G&>)
+    constexpr explicit(!std::convertible_to<U, T> || !std::convertible_to<G, E>)
         Result(const Result<U, G>& res)
         : has_value_{res.has_value()} {
         if (has_value_) {
@@ -138,10 +136,10 @@ public:
     }
 
     template <typename U = T, typename G = E>
-        requires(std::is_constructible_v<T, U>) &&
-                (std::is_constructible_v<E, G>)
-    constexpr explicit(!std::is_convertible_v<U, T> ||
-                       !std::is_convertible_v<G, E>) Result(Result<U, G>&& res)
+        requires(std::constructible_from<T, const U&>) &&
+                (std::constructible_from<E, const G&>)
+    constexpr explicit(!std::convertible_to<U, T> || !std::convertible_to<G, E>)
+        Result(Result<U, G>&& res)
         : has_value_{res.has_value()} {
         if (has_value_) {
             std::construct_at(std::addressof(value_), std::move(res).value_);
@@ -151,9 +149,7 @@ public:
     }
 
     constexpr bool has_value() const { return has_value_; }
-
     constexpr bool has_error() const { return !has_value_; }
-
     constexpr operator bool() const { return has_value(); }
 
     constexpr operator value_type() const = delete;
@@ -220,7 +216,7 @@ public:
 
     template <typename U = T>
     [[nodiscard]] constexpr value_type value_or(U&& default_value) const&
-        requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
+        requires(!std::is_void_v<T>) && (std::constructible_from<T, U>)
     {
         if (has_value_) {
             return value_;
@@ -230,7 +226,7 @@ public:
 
     template <typename U = T>
     [[nodiscard]] constexpr value_type value_or(U&& default_value) &&
-        requires(!std::is_void_v<T>) && (std::is_constructible_v<T, U>)
+        requires(!std::is_void_v<T>) && (std::constructible_from<T, U>)
     {
         if (has_value_) {
             return std::move(value_);
