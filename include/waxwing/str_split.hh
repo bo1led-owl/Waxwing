@@ -9,7 +9,6 @@ template <typename Sep>
     requires(std::same_as<Sep, std::string_view> || std::same_as<Sep, char>)
 class Split final {
     static constexpr size_t length(char) { return 1; }
-
     static constexpr size_t length(std::string_view s) { return s.size(); }
 
     std::string_view src_;
@@ -21,7 +20,7 @@ public:
     constexpr Split(const std::string_view source, const Sep sep)
         : src_(source), sep_(sep) {}
 
-    std::optional<std::string_view> next() {
+    constexpr std::optional<std::string_view> next() {
         const size_t index = src_.find(sep_, cur_index_);
         const bool found = index != std::string_view::npos;
 

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <fmt/core.h>
+
+#include <algorithm>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -7,11 +10,65 @@
 
 #include "request.hh"
 #include "response.hh"
+#include "str_split.hh"
 #include "types.hh"
 
 namespace waxwing::internal {
 using RequestHandler = std::function<std::unique_ptr<Response>(
     Request const&, const PathParameters)>;
+
+/// Class for compile-time checks of targets
+class RouteTarget {
+    std::string_view target_;
+
+    // this is bad but C++ does not provide a constexpr `isalnum` function
+    static consteval bool is_legal_char(char c) noexcept {
+        return ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') ||
+               ('A' <= c && c <= 'Z') || c == '*' || c == ':' || c == '.' ||
+               c == '_' || c == '-';
+    }
+
+public:
+    template <typename S>
+        requires(std::constructible_from<std::string_view, S>)
+    consteval RouteTarget(S&& target) : target_{std::forward<S>(target)} {
+        if (!check(target_)) {
+            throw std::invalid_argument{
+                fmt::format("Invalid target `{}`", target_)};
+        }
+    }
+
+    static consteval bool check(std::string_view target) noexcept {
+        if (target.starts_with('/')) {
+            target = target.substr(1);
+        }
+
+        auto split = str_util::split(target, '/');
+        for (std::optional<std::string_view> component = split.next();
+             component.has_value(); component = split.next()) {
+            const size_t param_indicators_count =
+                std::count_if(component->begin(), component->end(),
+                              [](char c) { return c == '*' || c == ':'; });
+            if (param_indicators_count > 1) {
+                return false;
+            }
+            if (param_indicators_count == 1 &&
+                !(component->starts_with('*') || component->starts_with(':'))) {
+                return false;
+            }
+
+            const bool all_chars_are_valid = std::all_of(
+                component->begin(), component->end(), is_legal_char);
+            if (!all_chars_are_valid) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    constexpr operator std::string_view() const noexcept { return target_; }
+};
 
 class RoutingResult final {
     RequestHandler handler_;
@@ -101,7 +158,7 @@ public:
         : not_found_handler_{not_found_handler} {}
 
     void add_route(HttpMethod method, std::string_view target,
-                   const RequestHandler& handler);
+                   const RequestHandler& handler) noexcept;
 
     /// Parse given target and return corresponding request handler and parsed
     /// path parameters. If handler was not found, returns 404 hanlder

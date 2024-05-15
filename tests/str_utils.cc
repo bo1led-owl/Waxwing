@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "str_split.hh"
 #include "str_util.hh"
+#include "waxwing/str_split.hh"
 
 using namespace std::literals;
 

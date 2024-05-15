@@ -15,16 +15,16 @@ class Server final {
 
 public:
     void route(
-        HttpMethod method, std::string_view target,
+        HttpMethod method, internal::RouteTarget target,
         const std::function<std::unique_ptr<Response>()>& handler) noexcept;
-    void route(HttpMethod method, std::string_view target,
+    void route(HttpMethod method, internal::RouteTarget target,
                const std::function<std::unique_ptr<Response>(Request const&)>&
                    handler) noexcept;
     void route(
-        HttpMethod method, std::string_view target,
+        HttpMethod method, internal::RouteTarget target,
         const std::function<std::unique_ptr<Response>(const PathParameters)>&
             handler) noexcept;
-    void route(HttpMethod method, std::string_view target,
+    void route(HttpMethod method, internal::RouteTarget target,
                const std::function<std::unique_ptr<Response>(
                    Request const&, const PathParameters)>& handler) noexcept;
 

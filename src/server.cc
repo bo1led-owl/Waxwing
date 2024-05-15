@@ -11,13 +11,13 @@
 #include <system_error>
 #include <utility>
 
-#include "str_split.hh"
 #include "str_util.hh"
 #include "thread_pool.hh"
 #include "waxwing/io.hh"
 #include "waxwing/request.hh"
 #include "waxwing/response.hh"
 #include "waxwing/router.hh"
+#include "waxwing/str_split.hh"
 #include "waxwing/types.hh"
 
 namespace waxwing {
@@ -202,7 +202,7 @@ void handle_connection(const Router& router, Connection connection) {
 }  // namespace
 
 void Server::route(
-    const HttpMethod method, const std::string_view target,
+    const HttpMethod method, const internal::RouteTarget target,
     const std::function<std::unique_ptr<Response>()>& handler) noexcept {
     route(method, target, [handler](const Request&, const PathParameters) {
         return handler();
@@ -210,7 +210,7 @@ void Server::route(
 }
 
 void Server::route(
-    const HttpMethod method, const std::string_view target,
+    const HttpMethod method, const internal::RouteTarget target,
     const std::function<std::unique_ptr<Response>(Request const&)>&
         handler) noexcept {
     route(method, target, [handler](const Request& req, const PathParameters) {
@@ -219,7 +219,7 @@ void Server::route(
 }
 
 void Server::route(
-    const HttpMethod method, const std::string_view target,
+    const HttpMethod method, const internal::RouteTarget target,
     const std::function<std::unique_ptr<Response>(const PathParameters)>&
         handler) noexcept {
     route(method, target,
@@ -229,7 +229,7 @@ void Server::route(
 }
 
 void Server::route(
-    const HttpMethod method, const std::string_view target,
+    const HttpMethod method, const internal::RouteTarget target,
     const std::function<std::unique_ptr<Response>(
         Request const&, const PathParameters)>& handler) noexcept {
     router_.add_route(method, target, handler);

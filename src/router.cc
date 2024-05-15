@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <regex>
 #include <string_view>
 
 namespace waxwing::internal {
@@ -22,11 +21,11 @@ void print_node_tree_segment(const uint8_t layer, const bool last) noexcept {
     }
 }
 
-bool validate_route(const std::string_view target) noexcept {
-    const std::regex r{R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
-                       std::regex::ECMAScript | std::regex::nosubs};
-    return std::regex_match(target.cbegin(), target.cend(), r);
-}
+// bool validate_route(const std::string_view target) noexcept {
+//     const std::regex r{R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
+//                        std::regex::ECMAScript | std::regex::nosubs};
+//     return std::regex_match(target.cbegin(), target.cend(), r);
+// }
 }  // namespace
 
 // ===== RouteResult =====
@@ -43,10 +42,11 @@ void Router::set_not_found_handler(const RequestHandler handler) noexcept {
 
 void Router::add_route(const HttpMethod method, const std::string_view target,
                        const RequestHandler& handler) {
-    const bool success = validate_route(target);
-    if (!success) {
-        throw std::invalid_argument(fmt::format("Invalid route `{}`", target));
-    }
+    // const bool success = validate_route(target);
+    // if (!success) {
+    //     throw std::invalid_argument(fmt::format("Invalid route `{}`",
+    //     target));
+    // }
 
     tree_.insert(method, target, handler);
 }

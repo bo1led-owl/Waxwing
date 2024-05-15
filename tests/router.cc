@@ -106,26 +106,14 @@ TEST(Router, PathParametersRollback) {
 }
 
 TEST(Router, RouteValidation) {
-    auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.build();
-    };
+    EXPECT_TRUE(internal::RouteTarget::check("/foo/bar"));
+    EXPECT_TRUE(internal::RouteTarget::check("foo/bar/"));
+    EXPECT_TRUE(internal::RouteTarget::check("/foo/bar"));
+    EXPECT_TRUE(internal::RouteTarget::check("/:name/*action/"));
 
-    Router r;
-    auto expect_invalid = [&r, &foo](const std::string_view target) {
-        EXPECT_THROW(r.add_route(HttpMethod::Get, target, foo),
-                     std::invalid_argument);
-    };
-    auto expect_valid = [&r, &foo](const std::string_view target) {
-        EXPECT_NO_THROW(r.add_route(HttpMethod::Get, target, foo));
-    };
-
-    expect_valid("foo/bar/");
-    expect_valid("/foo/bar");
-    expect_valid("/:name/*action/");
-
-    expect_invalid("/b?/");
-    expect_invalid("/::foo/");
-    expect_invalid("/*action*");
+    EXPECT_FALSE(internal::RouteTarget::check("/b?/"));
+    EXPECT_FALSE(internal::RouteTarget::check("/::foo/"));
+    EXPECT_FALSE(internal::RouteTarget::check("/*action*"));
 }
 
 TEST(Router, RepeatingTargets) {
