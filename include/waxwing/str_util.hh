@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <ranges>
-#include <string>
 #include <string_view>
 
 namespace waxwing::str_util {
@@ -25,9 +24,30 @@ constexpr std::string_view trim(const std::string_view s) {
     return rtrim(ltrim(s));
 }
 
-constexpr std::string to_lower(const std::string_view s) {
-    std::string res{s};
-    std::for_each(res.begin(), res.end(), [](char& c) { c = std::tolower(c); });
-    return res;
+constexpr char ascii_to_lower(const char c) {
+    if ('A' <= c && c <= 'Z') {
+        return c + ('a' - 'A');
+    } else {
+        return c;
+    }
+}
+
+// constexpr std::string to_lower(const std::string_view s) {
+//     std::string res{s};
+//     std::for_each(res.begin(), res.end(),
+//                   [](char& c) { c = ascii_to_lower(c); });
+//     return res;
+// }
+
+// constexpr std::string to_lower(std::string&& s) {
+//     std::for_each(s.begin(), s.end(), [](char& c) { c = ascii_to_lower(c);
+//     }); return std::move(s);
+// }
+
+constexpr bool case_insensitive_eq(std::string_view lhs, std::string_view rhs) {
+    return std::equal(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(),
+                      [](const char a, const char b) {
+                          return ascii_to_lower(a) == ascii_to_lower(b);
+                      });
 }
 }  // namespace waxwing::str_util

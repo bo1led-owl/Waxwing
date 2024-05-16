@@ -4,6 +4,20 @@
 #include <string_view>
 
 namespace waxwing {
+bool Headers::contains(const std::string_view key) const noexcept {
+    return repr_.contains(key);
+}
+
+std::optional<std::string_view> Headers::get(
+    const std::string_view key) const noexcept {
+    const auto iter = repr_.find(key);
+    if (iter == repr_.end()) {
+        return std::nullopt;
+    }
+
+    return iter->second;
+}
+
 std::string_view format_method(const HttpMethod method) noexcept {
     switch (method) {
         case HttpMethod::Get:

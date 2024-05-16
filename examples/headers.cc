@@ -19,6 +19,7 @@ auto read_header(const waxwing::Request& req) {
     } else {
         return waxwing::ResponseBuilder(waxwing::HttpStatusCode::BadRequest)
             .body("No key provided")
+            .content_type(waxwing::content_type::plaintext())
             .build();
     }
 }

@@ -11,14 +11,14 @@
 #include <system_error>
 #include <utility>
 
-#include "str_util.hh"
 #include "thread_pool.hh"
+#include "waxwing/http.hh"
 #include "waxwing/io.hh"
 #include "waxwing/request.hh"
 #include "waxwing/response.hh"
 #include "waxwing/router.hh"
 #include "waxwing/str_split.hh"
-#include "waxwing/types.hh"
+#include "waxwing/str_util.hh"
 
 namespace waxwing {
 using internal::Connection;
@@ -27,12 +27,13 @@ using internal::Socket;
 using internal::concurrency::ThreadPool;
 
 namespace {
-std::pair<std::string, std::string> parse_header(const std::string_view line) {
+std::pair<std::string_view, std::string_view> parse_header(
+    const std::string_view line) {
     const size_t colon_pos = line.find(':');
 
-    return {str_util::to_lower(str_util::trim(line.substr(0, colon_pos))),
-            std::string{str_util::trim(
-                line.substr(colon_pos + 1, line.size() - colon_pos - 1))}};
+    return {str_util::trim(line.substr(0, colon_pos)),
+            str_util::trim(
+                line.substr(colon_pos + 1, line.size() - colon_pos - 1))};
 }
 
 void concat_header(std::string& buf, const std::string_view key,
@@ -79,15 +80,11 @@ std::optional<std::pair<HttpMethod, std::string>> parse_request_line(
     return {{method.value(), std::move(*target)}};
 }
 
-Result<size_t, std::string> parse_content_length(const Headers& headers) {
+Result<size_t, std::string> parse_content_length(std::string_view raw) {
     size_t content_length = 0;
-    const std::string_view raw_content_length =
-        headers.find("content-length")->second;
 
     const std::errc error_code =
-        std::from_chars(raw_content_length.cbegin(), raw_content_length.cend(),
-                        content_length)
-            .ec;
+        std::from_chars(raw.cbegin(), raw.cend(), content_length).ec;
     if (error_code != std::errc{}) {
         return Error{fmt::format("couldn't parse `Content-Length`: {}",
                                  std::make_error_code(error_code).message())};
@@ -96,8 +93,7 @@ Result<size_t, std::string> parse_content_length(const Headers& headers) {
     }
 }
 
-Result<std::unique_ptr<Request>, std::string> read_request(
-    const Connection& conn) {
+Result<Request, std::string> read_request(const Connection& conn) {
     constexpr size_t HEADERS_BUFFER_SIZE = 2048;  // 2 Kb
 
     std::string buf;
@@ -115,10 +111,6 @@ Result<std::unique_ptr<Request>, std::string> read_request(
 
     auto [method, target] = std::move(*request_line_opt);
 
-    if (!target.starts_with('/')) {
-        target = std::move(std::string("/").append(target));
-    }
-
     RequestBuilder builder{method, std::move(target)};
     Headers headers;
 
@@ -129,16 +121,20 @@ Result<std::unique_ptr<Request>, std::string> read_request(
         }
 
         auto [key, value] = parse_header(*line);
-        headers.emplace(std::move(key), std::move(value));
+        headers[key] = value;
     };
 
-    // only these methods are allowed to carry payload
+    // requests with DELETE, POST, PATCH or PUT method generally have a body
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-    if (method == HttpMethod::Delete || method == HttpMethod::Patch ||
-        method == HttpMethod::Post || method == HttpMethod::Put) {
-        if (headers.contains("content-length")) {
+    const bool has_body =
+        method == HttpMethod::Delete || method == HttpMethod::Patch ||
+        method == HttpMethod::Post || method == HttpMethod::Put ||
+        headers.contains("content-length") || headers.contains("content-type");
+    if (has_body) {
+        auto raw_content_length_opt = headers.get("content-length");
+        if (raw_content_length_opt.has_value()) {
             Result<size_t, std::string> content_length =
-                parse_content_length(headers);
+                parse_content_length(*raw_content_length_opt);
             if (!content_length) {
                 return Error{content_length.error()};
             }
@@ -154,7 +150,7 @@ Result<std::unique_ptr<Request>, std::string> read_request(
     return std::move(builder).build();
 }
 
-void send_response(const Connection& conn, Response& resp) {
+void send_response(const Connection& conn, Response& resp) noexcept {
     std::string buf;
 
     buf += "HTTP/1.1 ";
@@ -163,7 +159,7 @@ void send_response(const Connection& conn, Response& resp) {
 
     Headers& headers = resp.headers();
 
-    const std::optional<std::string>& body_opt = resp.body();
+    const std::optional<std::string_view> body_opt = resp.body();
     if (body_opt.has_value()) {
         const std::string content_length = std::to_string(body_opt->size());
         headers["Content-Length"] = content_length;
@@ -182,28 +178,26 @@ void send_response(const Connection& conn, Response& resp) {
     conn.send(buf);
 }
 
-void handle_connection(const Router& router, Connection connection) {
+void handle_connection(const Router& router, Connection connection) noexcept {
     auto req_res = read_request(connection);
     if (!req_res) {
         spdlog::error("{}", req_res.error());
         return;
     }
 
-    const Request& req = *req_res.value();
-
+    const Request& req = req_res.value();
     const internal::RoutingResult route =
         router.route(req.method(), req.target());
 
-    std::unique_ptr<Response> resp = route.handler()(req, route.parameters());
+    Response resp = route.handler()(req, route.parameters());
     spdlog::info("{} {} -> {}", format_method(req.method()), req.target(),
-                 format_status_code(resp->status()));
-    send_response(connection, *resp);
+                 format_status_code(resp.status()));
+    send_response(connection, resp);
 }
 }  // namespace
 
-void Server::route(
-    const HttpMethod method, const internal::RouteTarget target,
-    const std::function<std::unique_ptr<Response>()>& handler) noexcept {
+void Server::route(const HttpMethod method, const internal::RouteTarget target,
+                   const std::function<Response()>& handler) noexcept {
     route(method, target, [handler](const Request&, const PathParameters) {
         return handler();
     });
@@ -211,8 +205,7 @@ void Server::route(
 
 void Server::route(
     const HttpMethod method, const internal::RouteTarget target,
-    const std::function<std::unique_ptr<Response>(Request const&)>&
-        handler) noexcept {
+    const std::function<Response(Request const&)>& handler) noexcept {
     route(method, target, [handler](const Request& req, const PathParameters) {
         return handler(req);
     });
@@ -220,18 +213,15 @@ void Server::route(
 
 void Server::route(
     const HttpMethod method, const internal::RouteTarget target,
-    const std::function<std::unique_ptr<Response>(const PathParameters)>&
-        handler) noexcept {
+    const std::function<Response(const PathParameters)>& handler) noexcept {
     route(method, target,
           [handler](const Request&, const PathParameters params) {
               return handler(params);
           });
 }
 
-void Server::route(
-    const HttpMethod method, const internal::RouteTarget target,
-    const std::function<std::unique_ptr<Response>(
-        Request const&, const PathParameters)>& handler) noexcept {
+void Server::route(const HttpMethod method, const internal::RouteTarget target,
+                   const internal::RequestHandler& handler) noexcept {
     router_.add_route(method, target, handler);
 }
 

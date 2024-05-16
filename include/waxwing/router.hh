@@ -3,19 +3,19 @@
 #include <fmt/core.h>
 
 #include <algorithm>
-#include <memory>
+#include <functional>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "http.hh"
 #include "request.hh"
 #include "response.hh"
 #include "str_split.hh"
-#include "types.hh"
 
 namespace waxwing::internal {
-using RequestHandler = std::function<std::unique_ptr<Response>(
-    Request const&, const PathParameters)>;
+using RequestHandler =
+    std::function<Response(Request const&, const PathParameters)>;
 
 /// Class for compile-time checks of targets
 class RouteTarget {
@@ -33,8 +33,7 @@ public:
         requires(std::constructible_from<std::string_view, S>)
     consteval RouteTarget(S&& target) : target_{std::forward<S>(target)} {
         if (!check(target_)) {
-            throw std::invalid_argument{
-                fmt::format("Invalid target `{}`", target_)};
+            throw std::invalid_argument("Invalid target");
         }
     }
 
@@ -111,9 +110,8 @@ class RouteTree final {
         bool matches(std::string_view key) const noexcept;
         bool is_parameter() const noexcept;
 
-        /// Returns true if handler wasn't present
-        bool insert_handler(HttpMethod method, RequestHandler handler);
-
+        void insert_or_replace_handler(HttpMethod method,
+                                       RequestHandler handler);
         Node& insert_or_get_child(Node&& child);
 
         std::optional<RequestHandler> find_handler(
@@ -126,7 +124,7 @@ class RouteTree final {
     };
 
     Node root_{""};
-    static bool insert(Node& cur_node, HttpMethod method,
+    static void insert(Node& cur_node, HttpMethod method,
                        std::string_view target, RequestHandler handler);
     static std::optional<RoutingResult> get(
         Node const& cur_node, std::vector<std::string_view>& params,
@@ -136,7 +134,7 @@ public:
     RouteTree() = default;
 
     void insert(HttpMethod method, std::string_view target,
-                RequestHandler handler);
+                RequestHandler handler) noexcept;
 
     std::optional<RoutingResult> get(HttpMethod method,
                                      std::string_view target) const noexcept;

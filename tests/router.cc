@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 
 namespace waxwing {
-using waxwing::internal::Router;
 using waxwing::internal::RouteTree;
 
 TEST(Router, Basic) {
@@ -24,19 +23,19 @@ TEST(Router, Basic) {
 
     auto result = tree.get(HttpMethod::Get, "/foo");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body(), "foo");
+    EXPECT_EQ((result->handler())(req, {}).body(), "foo");
 
     result = tree.get(HttpMethod::Get, "/bar");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body(), "bar");
+    EXPECT_EQ((result->handler())(req, {}).body(), "bar");
 
     result = tree.get(HttpMethod::Get, "foo");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body(), "foo");
+    EXPECT_EQ((result->handler())(req, {}).body(), "foo");
 
     result = tree.get(HttpMethod::Get, "bar");
     ASSERT_TRUE(result.has_value());
-    EXPECT_EQ((result->handler())(*req, {})->body(), "bar");
+    EXPECT_EQ((result->handler())(req, {}).body(), "bar");
 
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/unknown").has_value());
 }
@@ -59,7 +58,7 @@ TEST(Router, PathParametersBasic) {
             auto opt = tree.get(method, path);
             ASSERT_TRUE(opt.has_value());
             EXPECT_EQ(opt->parameters().size(), params_count);
-            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body(), result);
+            EXPECT_EQ(opt->handler()(req, opt->parameters()).body(), result);
         };
 
     expect_path_result(HttpMethod::Get, "/foo/", "foo", 2);
@@ -70,6 +69,38 @@ TEST(Router, PathParametersBasic) {
     EXPECT_FALSE(tree.get(HttpMethod::Get, "").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "/hello").has_value());
     EXPECT_FALSE(tree.get(HttpMethod::Get, "hello").has_value());
+}
+
+TEST(Router, AmbiguousRoutes) {
+    auto foo = [](const Request&, const PathParameters) {
+        return ResponseBuilder{HttpStatusCode::Ok}.body("foo").build();
+    };
+    auto bar = [](const Request&, const PathParameters) {
+        return ResponseBuilder{HttpStatusCode::Ok}.body("bar").build();
+    };
+    auto baz = [](const Request&, const PathParameters) {
+        return ResponseBuilder{HttpStatusCode::Ok}.body("baz").build();
+    };
+
+    RouteTree tree;
+    tree.insert(HttpMethod::Get, "/:bar", bar);
+    tree.insert(HttpMethod::Get, "/*baz", baz);
+    tree.insert(HttpMethod::Get, "/foo", foo);
+
+    auto req = RequestBuilder(HttpMethod::Get, "").build();
+
+    auto expect_path_result =
+        [&tree, &req](HttpMethod method, std::string_view path,
+                      std::string_view result, size_t params_count) {
+            auto opt = tree.get(method, path);
+            ASSERT_TRUE(opt.has_value());
+            EXPECT_EQ(opt->parameters().size(), params_count);
+            EXPECT_EQ(opt->handler()(req, opt->parameters()).body(), result);
+        };
+
+    expect_path_result(HttpMethod::Get, "/foo", "foo", 0);
+    expect_path_result(HttpMethod::Get, "/b", "bar", 1);
+    expect_path_result(HttpMethod::Get, "/", "baz", 1);
 }
 
 TEST(Router, PathParametersRollback) {
@@ -93,7 +124,7 @@ TEST(Router, PathParametersRollback) {
             auto opt = tree.get(method, path);
             ASSERT_TRUE(opt.has_value());
             EXPECT_EQ(opt->parameters().size(), params_count);
-            EXPECT_EQ(opt->handler()(*req, opt->parameters())->body(), result);
+            EXPECT_EQ(opt->handler()(req, opt->parameters()).body(), result);
         };
 
     expect_path_result(HttpMethod::Get, "/foo/", "params", 1);
@@ -114,16 +145,5 @@ TEST(Router, RouteValidation) {
     EXPECT_FALSE(internal::RouteTarget::check("/b?/"));
     EXPECT_FALSE(internal::RouteTarget::check("/::foo/"));
     EXPECT_FALSE(internal::RouteTarget::check("/*action*"));
-}
-
-TEST(Router, RepeatingTargets) {
-    auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.build();
-    };
-
-    Router r;
-    EXPECT_NO_THROW(r.add_route(HttpMethod::Get, "/foo", foo));
-    EXPECT_THROW(r.add_route(HttpMethod::Get, "/foo", foo),
-                 std::invalid_argument);
 }
 }  // namespace waxwing

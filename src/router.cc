@@ -41,13 +41,7 @@ void Router::set_not_found_handler(const RequestHandler handler) noexcept {
 }
 
 void Router::add_route(const HttpMethod method, const std::string_view target,
-                       const RequestHandler& handler) {
-    // const bool success = validate_route(target);
-    // if (!success) {
-    //     throw std::invalid_argument(fmt::format("Invalid route `{}`",
-    //     target));
-    // }
-
+                       const RequestHandler& handler) noexcept {
     tree_.insert(method, target, handler);
 }
 
@@ -175,20 +169,19 @@ RouteTree::Node& RouteTree::Node::insert_or_get_child(Node&& child) {
     return result;
 }
 
-bool RouteTree::Node::insert_handler(const HttpMethod method,
-                                     const RequestHandler handler) {
+void RouteTree::Node::insert_or_replace_handler(const HttpMethod method,
+                                                const RequestHandler handler) {
     auto iter = std::find_if(
-        handlers_.cbegin(), handlers_.cend(),
+        handlers_.begin(), handlers_.end(),
         [method](const std::pair<HttpMethod, RequestHandler>& hanlder) {
             return hanlder.first == method;
         });
 
     if (iter != handlers_.end()) {
-        return false;
+        iter->second = handler;
+    } else {
+        handlers_.emplace_back(method, handler);
     }
-
-    handlers_.emplace_back(method, handler);
-    return true;
 }
 
 std::optional<RequestHandler> RouteTree::Node::find_handler(
@@ -223,33 +216,29 @@ RouteTree::Node::find_matching_children(
 // ===== RouteTree =====
 void RouteTree::print() const noexcept { root_.print(); }
 
-bool RouteTree::insert(Node& cur_node, const HttpMethod method,
+void RouteTree::insert(Node& cur_node, const HttpMethod method,
                        std::string_view target, const RequestHandler handler) {
     const size_t slash_pos = target.find('/');
     const std::string_view component = target.substr(0, slash_pos);
 
     if (slash_pos == std::string_view::npos) {
-        return cur_node.insert_or_get_child(Node{component})
-            .insert_handler(method, handler);
+        cur_node.insert_or_get_child(Node{component})
+            .insert_or_replace_handler(method, handler);
+    } else {
+        target = target.substr(slash_pos + 1);
+        insert(cur_node.insert_or_get_child(Node{component}), method, target,
+               handler);
     }
-
-    target = target.substr(slash_pos + 1);
-    return insert(cur_node.insert_or_get_child(Node{component}), method, target,
-                  handler);
 }
 
 void RouteTree::insert(const HttpMethod method, std::string_view target,
-                       const RequestHandler handler) {
+                       const RequestHandler handler) noexcept {
     // leading slash is insignificant
     if (target.starts_with('/')) {
         target = target.substr(1);
     }
 
-    if (!insert(root_, method, target, handler)) {
-        throw std::invalid_argument(
-            fmt::format("Handler for `{}` on `{}` was already present",
-                        format_method(method), target));
-    }
+    insert(root_, method, target, handler);
 }
 
 std::optional<RoutingResult> RouteTree::get(

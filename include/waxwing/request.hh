@@ -1,12 +1,10 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 #include <string_view>
 #include <utility>
 
 #include "http.hh"
-#include "types.hh"
 
 namespace waxwing {
 class Request {
@@ -36,36 +34,28 @@ public:
 class RequestBuilder final {
     HttpMethod method_;
     std::string target_;
-    Headers headers_{};
-    std::string body_{};
+    Headers headers_;
+    std::string body_;
 
 public:
     template <typename S>
-        requires(std::is_constructible_v<std::string, S>)
+        requires(std::constructible_from<std::string, S>)
     RequestBuilder(HttpMethod method, S&& target)
         : method_{method}, target_{std::forward<S>(target)} {}
 
     template <typename S1, typename S2>
-        requires(std::is_constructible_v<std::string, S1>) &&
-                (std::is_constructible_v<std::string, S2>)
+        requires(std::constructible_from<std::string, S1>) &&
+                (std::constructible_from<std::string, S2>)
     RequestBuilder& header(S1&& key, S2&& value) & {
-        auto [iter, inserted] = headers_.try_emplace(std::forward<S1>(key),
-                                                     std::forward<S2>(value));
-        if (!inserted) {
-            std::construct_at(&iter->second, std::forward<S2>(value));
-        }
+        headers_[std::forward<S1>(key)] = std::forward<S2>(value);
         return *this;
     }
 
     template <typename S1, typename S2>
-        requires(std::is_constructible_v<std::string, S1>) &&
-                (std::is_constructible_v<std::string, S2>)
+        requires(std::constructible_from<std::string, S1>) &&
+                (std::constructible_from<std::string, S2>)
     RequestBuilder&& header(S1&& key, S2&& value) && {
-        auto [iter, inserted] = headers_.try_emplace(std::forward<S1>(key),
-                                                     std::forward<S2>(value));
-        if (!inserted) {
-            std::construct_at(&iter->second, std::forward<S2>(value));
-        }
+        headers_[std::forward<S1>(key)] = std::forward<S2>(value);
         return std::move(*this);
     }
 
@@ -80,19 +70,19 @@ public:
     }
 
     template <typename S>
-        requires(std::is_constructible_v<std::string, S>)
+        requires(std::constructible_from<std::string, S>)
     RequestBuilder& body(S&& value) & {
-        std::construct_at(&body_, std::forward<S>(value));
+        body_ = std::forward<S>(value);
         return *this;
     }
 
     template <typename S>
-        requires(std::is_constructible_v<std::string, S>)
+        requires(std::constructible_from<std::string, S>)
     RequestBuilder&& body(S&& value) && {
-        std::construct_at(&body_, std::forward<S>(value));
+        body_ = std::forward<S>(value);
         return std::move(*this);
     }
 
-    std::unique_ptr<Request> build() &&;
+    Request build() &&;
 };
 }  // namespace waxwing

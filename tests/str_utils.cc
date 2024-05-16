@@ -1,12 +1,17 @@
 #include <gtest/gtest.h>
 
-#include "str_util.hh"
 #include "waxwing/str_split.hh"
+#include "waxwing/str_util.hh"
 
 using namespace std::literals;
 
 namespace {
+using waxwing::str_util::case_insensitive_eq;
+using waxwing::str_util::ltrim;
+using waxwing::str_util::rtrim;
 using waxwing::str_util::split;
+using waxwing::str_util::trim;
+
 TEST(Split, CharacterSeparatorBasic) {
     auto iter = split("hello world", ' ');
     const std::vector<std::string_view> words{"hello", "world"};
@@ -106,9 +111,6 @@ TEST(Split, MultiCharacterSeparatorRemaining) {
     EXPECT_EQ(iter.remaining(), "brown  fox  jumps  over  the  lazy  dog"sv);
 }
 
-using waxwing::str_util::ltrim;
-using waxwing::str_util::rtrim;
-using waxwing::str_util::trim;
 TEST(Trim, LTrim) {
     const std::vector<std::pair<std::string_view, std::string_view>> tests{
         {ltrim(" \t\nhello "), "hello "},
@@ -139,14 +141,24 @@ TEST(Trim, Trim) {
     }
 }
 
-using waxwing::str_util::to_lower;
-TEST(ToLower, Basic) {
-    const std::vector<std::pair<std::string, std::string_view>> tests{
-        {to_lower("hElLo"), "hello"},
-        {to_lower("hello \t\n"), "hello \t\n"},
+TEST(CaseInsensitiveEq, Basic) {
+    const std::vector<std::pair<std::string_view, std::string_view>> eq{
+        {"foo", "foo"},
+        {"   ", "   "},
+        {"FoO", "foo"},
+        {"FoO", "fOO"},
     };
-    for (const auto& test : tests) {
-        EXPECT_EQ(test.first, test.second);
+    for (const auto& [l, r] : eq) {
+        EXPECT_TRUE(case_insensitive_eq(l, r));
+    }
+
+    const std::vector<std::pair<std::string_view, std::string_view>> neq{
+        {"hello", "bye"},
+        {"foo", "bar"},
+        {"foo", "fo"},
+    };
+    for (const auto& [l, r] : neq) {
+        EXPECT_FALSE(case_insensitive_eq(l, r));
     }
 }
 }  // namespace
