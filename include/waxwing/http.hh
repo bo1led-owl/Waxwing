@@ -50,13 +50,12 @@ public:
 
     template <typename S>
         requires(std::constructible_from<std::string, S>)
-    std::string& operator[](S key) {
-        auto iter = repr_.find(std::forward<S>(key));
+    std::string& operator[](S&& key) {
+        auto iter = repr_.find(std::string_view{key});
         if (iter != repr_.end()) {
             return iter->second;
         } else {
-            return repr_.emplace(std::string{std::forward<S>(key)}, "")
-                .first->second;
+            return repr_.emplace(std::forward<S>(key), "").first->second;
         }
     }
 

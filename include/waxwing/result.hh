@@ -115,9 +115,9 @@ public:
     constexpr explicit(!std::convertible_to<U, T> || !std::convertible_to<G, E>)
         Result(const Result<U, G>& res) {
         if (res.has_value()) {
-            value_.template emplace<value_type>(std::get<VALUE>(res.value_));
+            value_.template emplace<VALUE>(std::get<VALUE>(res.value_));
         } else {
-            value_.template emplace<error_type>(std::get<ERROR>(res.value_));
+            value_.template emplace<ERROR>(std::get<ERROR>(res.value_));
         }
     }
 
@@ -126,13 +126,7 @@ public:
                 (std::constructible_from<E, const G&>)
     constexpr explicit(!std::convertible_to<U, T> || !std::convertible_to<G, E>)
         Result(Result<U, G>&& res) {
-        if (res.has_value()) {
-            value_.template emplace<value_type>(
-                std::get<VALUE>(std::move(res).value_));
-        } else {
-            value_.template emplace<error_type>(
-                std::get<ERROR>(std::move(res).value_));
-        }
+        value_.swap(std::move(res).value_);
     }
 
     constexpr bool has_value() const { return value_.index() == VALUE; }

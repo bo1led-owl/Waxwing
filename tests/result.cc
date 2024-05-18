@@ -50,5 +50,11 @@ TEST(Result, Conversion) {
 
     Result<int, std::string> sres_err2{sres_err};
     EXPECT_EQ(sres_err2.error(), err);
+
+    Result<int, int> int_int_res{21};
+    Result<int, int> int_int_err{Error{42}};
+    int_int_res = int_int_err;
+    EXPECT_TRUE(int_int_res.has_error());
+    EXPECT_EQ(int_int_res.error(), int_int_err.error());
 }
 }  // namespace
