@@ -8,11 +8,11 @@ using waxwing::internal::RouteTree;
 
 TEST(Router, Basic) {
     auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("foo").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("foo").build();
     };
 
     auto bar = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("bar").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("bar").build();
     };
 
     RouteTree tree;
@@ -42,7 +42,7 @@ TEST(Router, Basic) {
 
 TEST(Router, PathParametersBasic) {
     auto foo_bar = [](const Request&, const PathParameters params) {
-        return ResponseBuilder{HttpStatusCode::Ok}
+        return ResponseBuilder{HttpStatusCode::Ok_200}
             .body(fmt::format("{}{}", params[0], params[1]))
             .build();
     };
@@ -73,13 +73,13 @@ TEST(Router, PathParametersBasic) {
 
 TEST(Router, AmbiguousRoutes) {
     auto foo = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("foo").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("foo").build();
     };
     auto bar = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("bar").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("bar").build();
     };
     auto baz = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("baz").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("baz").build();
     };
 
     RouteTree tree;
@@ -105,11 +105,11 @@ TEST(Router, AmbiguousRoutes) {
 
 TEST(Router, PathParametersRollback) {
     auto foo_bar = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("foo_bar").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("foo_bar").build();
     };
 
     auto params = [](const Request&, const PathParameters) {
-        return ResponseBuilder{HttpStatusCode::Ok}.body("params").build();
+        return ResponseBuilder{HttpStatusCode::Ok_200}.body("params").build();
     };
 
     RouteTree tree;

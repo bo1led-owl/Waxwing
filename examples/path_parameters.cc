@@ -10,9 +10,9 @@
 auto name(const waxwing::PathParameters params) {
     std::string body = fmt::format("Requested user `{}`", params[0]);
 
-    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok_200)
         .body(std::move(body))
-        .content_type(waxwing::content_type::plaintext())
+        .content_type(waxwing::content_type::plaintext)
         .build();
 }
 
@@ -20,9 +20,9 @@ auto name_action(const waxwing::PathParameters params) {
     std::string body =
         fmt::format("Requested `{}` on user `{}`", params[1], params[0]);
 
-    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok_200)
         .body(std::move(body))
-        .content_type(waxwing::content_type::plaintext())
+        .content_type(waxwing::content_type::plaintext)
         .build();
 }
 

@@ -252,8 +252,9 @@ public:
         return std::move(std::get<ERROR>(std::move(value_)));
     }
 
-    template <typename F, typename U>
-    constexpr Result<U, E> map(F&& f) const& {
+    template <std::invocable F>
+    constexpr Result<std::invoke_result_t<F, value_type const&>, E> map(
+        F&& f) const& {
         if (has_value()) {
             return Result{
                 std::invoke(std::forward<F>(f), std::get<VALUE>(value_))};
@@ -261,8 +262,8 @@ public:
         return *this;
     }
 
-    template <typename F, typename U>
-    constexpr Result<U, E> map(F&& f) && {
+    template <std::invocable F>
+    constexpr Result<std::invoke_result_t<F, value_type&&>, E> map(F&& f) && {
         if (has_value()) {
             return Result{
                 std::invoke(std::forward<F>(f),
@@ -271,16 +272,20 @@ public:
         return *this;
     }
 
-    template <typename F, typename U>
-    constexpr Result<U, E> and_then(F&& f) const& {
+    template <std::invocable F>
+    constexpr Result<
+        typename std::invoke_result_t<F, value_type const&>::value_type, E>
+    and_then(F&& f) const& {
         if (has_value()) {
             return std::invoke(std::forward<F>(f), std::get<VALUE>(value_));
         }
         return *this;
     }
 
-    template <typename F, typename U>
-    constexpr Result<U, E> and_then(F&& f) && {
+    template <std::invocable F>
+    constexpr Result<typename std::invoke_result_t<F, value_type&&>::value_type,
+                     E>
+    and_then(F&& f) && {
         if (has_value()) {
             return std::invoke(std::forward<F>(f),
                                std::move(std::get<VALUE>(std::move(value_))));

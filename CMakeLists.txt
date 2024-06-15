@@ -19,7 +19,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/response.cc
   src/router.cc
   src/server.cc
-  src/thread_pool.cc
+  src/str_util.cc
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -36,6 +36,8 @@ target_link_libraries(${PROJECT_NAME}
   PUBLIC
     fmt::fmt
     spdlog::spdlog
+  PRIVATE
+    uring
 )
 
 if (BUILD_TESTS)
@@ -50,5 +52,7 @@ if (ENABLE_CCACHE)
   find_program(CCACHE_FOUND ccache)
   if(CCACHE_FOUND)
     set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_COMPILER_LAUNCHER ccache)
+  else()
+    message(cchache not found)
   endif()
 endif(ENABLE_CCACHE)

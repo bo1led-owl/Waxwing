@@ -4,7 +4,7 @@
 #include <string_view>
 #include <utility>
 
-#include "http.hh"
+#include "waxwing/http.hh"
 
 namespace waxwing {
 class Request {

@@ -8,10 +8,10 @@
 #include <utility>
 #include <vector>
 
-#include "http.hh"
-#include "request.hh"
-#include "response.hh"
-#include "str_split.hh"
+#include "waxwing/http.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
+#include "waxwing/str_split.hh"
 
 namespace waxwing::internal {
 using RequestHandler =
@@ -145,7 +145,7 @@ public:
 class Router final {
     constexpr static auto default_not_found_handler =
         [](const Request&, const PathParameters&) {
-            return ResponseBuilder(HttpStatusCode::NotFound).build();
+            return ResponseBuilder(HttpStatusCode::NotFound_404).build();
         };
 
     RouteTree tree_{};

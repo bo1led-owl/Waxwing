@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "http.hh"
+#include "waxwing/http.hh"
 
 namespace waxwing {
 class Response final {
@@ -44,7 +44,8 @@ public:
         requires(std::constructible_from<std::string, S1>) &&
                 (std::constructible_from<std::string, S2>)
     ResponseBuilder& header(S1&& key, S2&& value) & {
-        headers_[std::forward<S1>(key)] = std::forward<S2>(value);
+        headers_.insert_or_assign(std::forward<S1>(key),
+                                  std::forward<S2>(value));
         return *this;
     }
 
@@ -52,7 +53,8 @@ public:
         requires(std::constructible_from<std::string, S1>) &&
                 (std::constructible_from<std::string, S2>)
     ResponseBuilder&& header(S1&& key, S2&& value) && {
-        headers_[std::forward<S1>(key)] = std::forward<S2>(value);
+        headers_.insert_or_assign(std::forward<S1>(key),
+                                  std::forward<S2>(value));
         return std::move(*this);
     }
 

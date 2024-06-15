@@ -12,20 +12,20 @@ auto read_header(const waxwing::Request& req) {
 
     if (header.has_value()) {
         std::string body = fmt::format("OK key `{}`", *header);
-        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok_200)
             .body(std::move(body))
-            .content_type(waxwing::content_type::plaintext())
+            .content_type(waxwing::content_type::plaintext)
             .build();
     } else {
-        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::BadRequest)
+        return waxwing::ResponseBuilder(waxwing::HttpStatusCode::BadRequest_400)
             .body("No key provided")
-            .content_type(waxwing::content_type::plaintext())
+            .content_type(waxwing::content_type::plaintext)
             .build();
     }
 }
 
 auto write_header() {
-    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok)
+    return waxwing::ResponseBuilder(waxwing::HttpStatusCode::Ok_200)
         .header("Key", "1234")
         .build();
 }

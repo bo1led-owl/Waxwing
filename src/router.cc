@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <string_view>
 
@@ -20,12 +21,6 @@ void print_node_tree_segment(const uint8_t layer, const bool last) noexcept {
         std::cout << "`- ";
     }
 }
-
-// bool validate_route(const std::string_view target) noexcept {
-//     const std::regex r{R"(^\/?([*:]?[\w.\-]*)(\/[*:]?[\w.\-]*)*$)",
-//                        std::regex::ECMAScript | std::regex::nosubs};
-//     return std::regex_match(target.cbegin(), target.cend(), r);
-// }
 }  // namespace
 
 // ===== RouteResult =====
@@ -245,10 +240,10 @@ std::optional<RoutingResult> RouteTree::get(
     Node const& cur_node, std::vector<std::string_view>& params,
     const HttpMethod method, std::string_view target) noexcept {
     const size_t slash_pos = target.find('/');
-    const bool found_slash = slash_pos != std::string_view::npos;
+    const bool is_last_component = slash_pos == std::string_view::npos;
     const std::string_view cur_component = target.substr(0, slash_pos);
 
-    if (!found_slash) {
+    if (is_last_component) {
         for (const Node& child :
              cur_node.find_matching_children(cur_component)) {
             std::optional<RequestHandler> result = child.find_handler(method);
@@ -264,6 +259,11 @@ std::optional<RoutingResult> RouteTree::get(
     }
 
     auto matching_children = cur_node.find_matching_children(cur_component);
+
+    assert(std::is_sorted(matching_children.begin(), matching_children.end(),
+                          [](Node const& lhs, Node const& rhs) {
+                              return std::less<Node>{}(lhs, rhs);
+                          }));
 
     bool pushed_parameter = false;
     target = target.substr(slash_pos + 1);  // remove current path component

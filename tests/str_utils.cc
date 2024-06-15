@@ -112,53 +112,28 @@ TEST(Split, MultiCharacterSeparatorRemaining) {
 }
 
 TEST(Trim, LTrim) {
-    const std::vector<std::pair<std::string_view, std::string_view>> tests{
-        {ltrim(" \t\nhello "), "hello "},
-        {ltrim("hello "), "hello "},
-    };
-    for (const auto& test : tests) {
-        EXPECT_EQ(test.first, test.second);
-    }
+    EXPECT_EQ(ltrim(" \t\nhello "), "hello ");
+    EXPECT_EQ(ltrim("hello "), "hello ");
 }
 
 TEST(Trim, RTrim) {
-    const std::vector<std::pair<std::string_view, std::string_view>> tests{
-        {rtrim(" hello \t\n"), " hello"},
-        {rtrim(" hello"), " hello"},
-    };
-    for (const auto& test : tests) {
-        EXPECT_EQ(test.first, test.second);
-    }
+    EXPECT_EQ(rtrim(" hello \t\n"), " hello");
+    EXPECT_EQ(rtrim(" hello"), " hello");
 }
 
 TEST(Trim, Trim) {
-    const std::vector<std::pair<std::string_view, std::string_view>> tests{
-        {trim(" \t\nhello \t\n"), "hello"},
-        {trim("hello"), "hello"},
-    };
-    for (const auto& test : tests) {
-        EXPECT_EQ(test.first, test.second);
-    }
+    EXPECT_EQ(trim(" \t\nhello \t\n"), "hello");
+    EXPECT_EQ(trim("hello"), "hello");
 }
 
 TEST(CaseInsensitiveEq, Basic) {
-    const std::vector<std::pair<std::string_view, std::string_view>> eq{
-        {"foo", "foo"},
-        {"   ", "   "},
-        {"FoO", "foo"},
-        {"FoO", "fOO"},
-    };
-    for (const auto& [l, r] : eq) {
-        EXPECT_TRUE(case_insensitive_eq(l, r));
-    }
+    EXPECT_TRUE(case_insensitive_eq("foo", "foo"));
+    EXPECT_TRUE(case_insensitive_eq("   ", "   "));
+    EXPECT_TRUE(case_insensitive_eq("FoO", "foo"));
+    EXPECT_TRUE(case_insensitive_eq("FoO", "fOO"));
 
-    const std::vector<std::pair<std::string_view, std::string_view>> neq{
-        {"hello", "bye"},
-        {"foo", "bar"},
-        {"foo", "fo"},
-    };
-    for (const auto& [l, r] : neq) {
-        EXPECT_FALSE(case_insensitive_eq(l, r));
-    }
+    EXPECT_FALSE(case_insensitive_eq("hello", "bye"));
+    EXPECT_FALSE(case_insensitive_eq("foo", "bar"));
+    EXPECT_FALSE(case_insensitive_eq("foo", "fo"));
 }
 }  // namespace
