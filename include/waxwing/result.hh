@@ -1,17 +1,19 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace waxwing {
 template <typename E>
-class [[nodiscard]] Error;
+class [[nodiscard("`Error` object is not used")]] Error;
 template <typename T, typename E>
 class [[nodiscard(
-    "`Result` object is ignored, it might have been an error")]] Result;
+    "`Result` object is ignored, it might contain an error")]] Result;
 
 namespace result {
 template <typename T>
@@ -32,7 +34,7 @@ constexpr bool is_result<Result<U, G>> = true;
 template <typename T>
 constexpr bool can_be_error =
     std::is_object_v<T> && !std::is_array_v<T> && !std::is_const_v<T> &&
-    !std::is_volatile_v<T> && !std::is_reference_v<T>;
+    !std::is_volatile_v<T> && !std::is_reference_v<T> && !is_error<T>;
 
 template <typename T>
 constexpr bool can_be_value =
@@ -301,7 +303,7 @@ constexpr auto and_then(std::optional<T> opt, F&& f) {
     if (opt.has_value()) {
         return std::invoke(std::forward<F>(f), *opt);
     } else {
-        return U{};
+        return std::optional<typename U::value_type>{};
     }
 }
 

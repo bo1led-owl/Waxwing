@@ -11,3 +11,5 @@ add_example(hello_world hello_world.cc)
 add_example(headers headers.cc)
 add_example(methods methods.cc)
 add_example(path_parameters path_parameters.cc)
+
+add_example(file_io file_io.cc)

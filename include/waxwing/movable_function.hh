@@ -26,7 +26,7 @@ public:
 };
 }  // namespace function
 
-template <typename>
+template <typename F>
 class MovableFunction;
 
 template <typename R, typename... Args>
@@ -38,7 +38,8 @@ public:
     ~MovableFunction() = default;
 
     template <typename F>
-        requires(!std::is_same_v<F, MovableFunction<R(Args...)>>)
+        requires(!std::same_as<F, MovableFunction<R(Args...)>>) &&
+                (std::is_invocable_v<F, Args && ...>)
     MovableFunction(F&& f)
         : f_{std::make_unique<function::FunctorContainer<F, R, Args...>>(
               std::forward<F>(f))} {}
@@ -54,7 +55,7 @@ public:
         return *this;
     }
 
-    R operator()(Args&&... args) const {
+    R operator()(Args... args) const {
         return std::invoke(*f_, std::forward<Args>(args)...);
     }
 

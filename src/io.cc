@@ -1,12 +1,17 @@
 #include "waxwing/io.hh"
 
 #include <arpa/inet.h>
+#include <asm-generic/socket.h>
+#include <fcntl.h>
+#include <fmt/core.h>
+#include <netinet/in.h>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cassert>
+#include <cerrno>
 #include <cstdint>
-#include <cstring>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -14,38 +19,34 @@
 
 #include "waxwing/result.hh"
 
-namespace waxwing::internal {
-Connection::~Connection() { close(fd_); }
+namespace waxwing::io {
+Connection::~Connection() {
+    // spdlog::debug("~Connection({})", fd_);
+    if (fd_ > 0) {
+        deleter_(fd_);
+        close(fd_);
+    }
+}
 
 Connection::Connection(Connection&& other) noexcept
-    : fd_{std::exchange(other.fd_, -1)} {}
+    : fd_{std::exchange(other.fd_, -1)},
+      addr_(std::exchange(other.addr_, sockaddr_in{})),
+      len_(std::exchange(other.len_, socklen_t{})),
+      deleter_(std::exchange(other.deleter_, {})) {}
 
-Connection& Connection::operator=(Connection&& rhs) noexcept {
-    std::swap(fd_, rhs.fd_);
+Connection& Connection::operator=(Connection&& other) noexcept {
+    std::swap(fd_, other.fd_);
+    std::swap(addr_, other.addr_);
+    std::swap(len_, other.len_);
+    std::swap(deleter_, other.deleter_);
     return *this;
 }
 
-size_t Connection::recv(std::string& s, const size_t n) const {
-    std::vector<char> buffer(n);
+Acceptor::~Acceptor() { close(fd_); }
 
-    const size_t bytes_read = ::recv(fd_, buffer.data(), n * sizeof(char), 0);
-
-    buffer.resize(bytes_read);
-    s.append(buffer.cbegin(), buffer.cend());
-    return bytes_read;
-}
-
-size_t Connection::send(const std::span<char> s) const {
-    return ::send(fd_, s.data(), s.size(), 0);
-}
-
-bool Connection::is_valid() const noexcept { return fd_ >= 0; }
-
-Socket::~Socket() { close(fd_); }
-
-Result<Socket, std::string> Socket::create(const std::string_view address,
-                                           const uint16_t port,
-                                           const int backlog) {
+Result<Acceptor, std::string> Acceptor::create(const std::string_view address,
+                                               const uint16_t port,
+                                               const unsigned int backlog) {
     const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         return Error{std::make_error_code(std::errc{errno}).message()};
@@ -53,6 +54,11 @@ Result<Socket, std::string> Socket::create(const std::string_view address,
 
     const int option = 1;
     ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
+    int flags = fcntl(fd, F_GETFL, 0);
+    assert(flags > 0);
+    flags |= O_NONBLOCK;
+    fcntl(fd, F_SETFL, flags);
 
     sockaddr_in addr{.sin_family = AF_INET, .sin_port = ::htons(port)};
 
@@ -72,23 +78,14 @@ Result<Socket, std::string> Socket::create(const std::string_view address,
         return Error{std::make_error_code(std::errc{errno}).message()};
     }
 
-    return Socket{fd};
+    return Acceptor{fd};
 }
 
-Socket::Socket(Socket&& other) noexcept : fd_{std::exchange(other.fd_, -1)} {}
+Acceptor::Acceptor(Acceptor&& other) noexcept
+    : fd_{std::exchange(other.fd_, -1)} {}
 
-Socket& Socket::operator=(Socket&& rhs) noexcept {
-    std::swap(fd_, rhs.fd_);
+Acceptor& Acceptor::operator=(Acceptor&& other) noexcept {
+    std::swap(fd_, other.fd_);
     return *this;
 }
-
-Connection Socket::accept() const {
-    sockaddr_in clientaddr{};
-    socklen_t clientaddr_len = sizeof(clientaddr);
-
-    const int result = ::accept(fd_, reinterpret_cast<sockaddr*>(&clientaddr),
-                                &clientaddr_len);
-
-    return Connection{result};
-}
-}  // namespace waxwing::internal
+}  // namespace waxwing::io

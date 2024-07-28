@@ -25,7 +25,7 @@ endmacro()
 
 add_test_target(unittests
   str_utils.cc
-  thread_pool.cc
+  dispatcher.cc
   router.cc
   result.cc
 )

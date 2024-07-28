@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
 namespace {
 using waxwing::Error;
 using waxwing::Result;

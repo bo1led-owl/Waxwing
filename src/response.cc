@@ -1,6 +1,10 @@
 #include "waxwing/response.hh"
 
-#include <sys/socket.h>
+#include <optional>
+#include <string_view>
+#include <utility>
+
+#include "waxwing/http.hh"
 
 namespace waxwing {
 HttpStatusCode Response::status() const noexcept { return status_code_; }

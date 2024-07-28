@@ -3,6 +3,13 @@
 #include <fmt/core.h>
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <string_view>
+
+#include "waxwing/http.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
+
 namespace waxwing {
 using waxwing::internal::RouteTree;
 

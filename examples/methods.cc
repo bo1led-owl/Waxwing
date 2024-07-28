@@ -2,8 +2,13 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <string>
 #include <string_view>
 
+#include "waxwing/http.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
+#include "waxwing/result.hh"
 #include "waxwing/server.hh"
 
 auto echo_get() {

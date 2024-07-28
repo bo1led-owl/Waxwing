@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <optional>
+#include <string_view>
+#include <vector>
+
 #include "waxwing/str_split.hh"
 #include "waxwing/str_util.hh"
 

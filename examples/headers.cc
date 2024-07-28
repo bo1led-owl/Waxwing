@@ -3,8 +3,15 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
 
+#include "waxwing/http.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
+#include "waxwing/result.hh"
 #include "waxwing/server.hh"
 
 auto read_header(const waxwing::Request& req) {

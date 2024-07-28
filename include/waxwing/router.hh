@@ -3,7 +3,12 @@
 #include <fmt/core.h>
 
 #include <algorithm>
+#include <compare>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <optional>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>

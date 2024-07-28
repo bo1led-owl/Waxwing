@@ -3,8 +3,13 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <string>
 #include <string_view>
+#include <utility>
 
+#include "waxwing/http.hh"
+#include "waxwing/response.hh"
+#include "waxwing/result.hh"
 #include "waxwing/server.hh"
 
 auto name(const waxwing::PathParameters params) {

@@ -4,8 +4,17 @@
 
 #include <algorithm>
 #include <cassert>
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <iostream>
+#include <optional>
 #include <string_view>
+#include <utility>
+#include <vector>
+
+#include "waxwing/http.hh"
 
 namespace waxwing::internal {
 namespace {

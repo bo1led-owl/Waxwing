@@ -1,16 +1,21 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <string>
 #include <string_view>
 
+#include "waxwing/http.hh"
 #include "waxwing/io.hh"
+#include "waxwing/request.hh"
+#include "waxwing/response.hh"
 #include "waxwing/result.hh"
 #include "waxwing/router.hh"
 
 namespace waxwing {
 class Server final {
     internal::Router router_;
-    internal::Socket socket_;
+    io::Acceptor acceptor_;
 
 public:
     void route(HttpMethod method, internal::RouteTarget target,
