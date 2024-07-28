@@ -7,8 +7,8 @@ set(CMAKE_COLOR_DIAGNOSTICS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_EXAMPLES "Build examples targets" ON)
-option(BUILD_TESTS "Build testing target" ON)
+option(BUILD_EXAMPLES "Build examples targets" OFF)
+option(BUILD_TESTS "Build testing target" OFF)
 option(ENABLE_CCACHE "Use ccache for compilation" OFF)
 
 add_library(${PROJECT_NAME} STATIC)
@@ -20,6 +20,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/router.cc
   src/server.cc
   src/str_util.cc
+  src/thread_pool.cc
 )
 
 target_include_directories(${PROJECT_NAME}

@@ -121,7 +121,7 @@ Result<Request, std::string> read_request(const Connection& conn) {
         }
 
         auto [key, value] = parse_header(*line);
-        headers[key] = value;
+        headers.get(key) = value;
     };
 
     // requests with DELETE, POST, PATCH or PUT method generally have a body
@@ -162,7 +162,7 @@ void send_response(const Connection& conn, Response& resp) noexcept {
     const std::optional<std::string_view> body_opt = resp.body();
     if (body_opt.has_value()) {
         const std::string content_length = std::to_string(body_opt->size());
-        headers["Content-Length"] = content_length;
+        headers.insert_or_assign("Content-Length", content_length);
     }
 
     // push all of the headers into buf
